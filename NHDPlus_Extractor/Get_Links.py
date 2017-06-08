@@ -219,6 +219,7 @@ RPU_to_VPU = {'01a': '01',
 
 # different types of rpu files on the website
 RPU_Files = ['CatSeed', 'FdrFac', 'FdrNull', 'FilledAreas', 'HydroDem', 'NEDSnapshot','Hydrodem','Catseed']
+problematic_rpu_files = {'Catseed':['Catseed','CatSeed'],'CatSeed':['Catseed','CatSeed'],'HydroDem':['HydroDem','Hydrodem'],'Hydrodem':['HydroDem','Hydrodem']}
 VPU_Files = ['EROMExtension', 'NHDPlusAttributes', 'NHDPlusBurnComponents', 'NHDPlusCatchment', 'NHDSnapshot',
              'VPUAttributeExtension', 'VogelExtension', 'WBDSnapshot', 'NHDSnapshotFGDB',]
 
@@ -312,7 +313,7 @@ def gather_rpu_links(max_version=15, rpu_input=None, filename_input=None):
         DA = VPU_to_DA[vpu]
 
         if vpu in problematic_vpu_list:
-            url = '{0}{1}/NHDPlus{2}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(base_url, DA, vpu, rpu, filename)
+            url = '{0}{1}/NHDPlus{2}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(base_url, DA, vpu, rpu_input, filename_input)
 
             i = 1
             while i < max_version+1:
@@ -322,7 +323,7 @@ def gather_rpu_links(max_version=15, rpu_input=None, filename_input=None):
                 try:
                     req = Request(final_url, data=None,headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'})
                     response = urlopen(req)
-                    working_urls.append(final_url)
+                    working_link = final_url
                     print('FOUND ' + final_url)
                     break
                 except HTTPError or URLError:
@@ -331,7 +332,7 @@ def gather_rpu_links(max_version=15, rpu_input=None, filename_input=None):
 
         else:
 
-            url = '{0}{1}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(base_url, DA, vpu, rpu, filename)
+            url = '{0}{1}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(base_url, DA, vpu, rpu_input, filename_input)
 
             i = 1
 
@@ -343,7 +344,7 @@ def gather_rpu_links(max_version=15, rpu_input=None, filename_input=None):
                 try:
                     req = Request(final_url, data=None,headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'})
                     response = urlopen(req)
-                    working_urls.append(final_url)
+                    working_link = final_url
                     print('FOUND '+ final_url)
                     break
                 except HTTPError or URLError:
@@ -354,7 +355,7 @@ def gather_rpu_links(max_version=15, rpu_input=None, filename_input=None):
             print('no link found for ', final_url)
             pass
 
-        return working_urls
+        return working_link
 
 
 def gather_vpu_links(max_version=15, vpu_input=None, filename_input=None):
@@ -442,7 +443,7 @@ def gather_vpu_links(max_version=15, vpu_input=None, filename_input=None):
                 try:
                     req = Request(final_url, data=None,headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'})
                     response = urlopen(req)
-                    working_urls.append(final_url)
+                    working_link = final_url
                     print('FOUND '+final_url)
                     break
                 except HTTPError or URLError:
@@ -462,7 +463,7 @@ def gather_vpu_links(max_version=15, vpu_input=None, filename_input=None):
                 try:
                     req = Request(final_url, data=None,headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'})
                     response = urlopen(req)
-                    working_urls.append(final_url)
+                    working_link = final_url
                     print('FOUND '+ final_url)
                     break
                 except HTTPError or URLError:
@@ -473,13 +474,13 @@ def gather_vpu_links(max_version=15, vpu_input=None, filename_input=None):
             print('no link found for ', final_url)
             pass
 
-        return working_urls
+        return working_link
 
 
 
 
 
-def get_VPU_File(vpu, filename):
+def getvpufile(vpu, filename):
 
     '''
     A function to return the desired VPU File
@@ -490,12 +491,17 @@ def get_VPU_File(vpu, filename):
 
     '''
 
+
+
     assert vpu in VPU_to_RPU.keys(), 'VPU must be in ' + str(sorted(VPU_to_RPU.keys()))
 
     assert filename in VPU_Files, 'filename must be one of ' + str(VPU_Files)
 
     DA = VPU_to_DA[vpu]
 
+    with open(link_file) as f:
+
+        verified_links = f.read().splitlines()
 
     if vpu in problematic_vpu_list:
 
@@ -507,25 +513,20 @@ def get_VPU_File(vpu, filename):
         url = '{0}{1}/NHDPlusV21_{1}_{2}_{3}'.format(base_url,DA,vpu,filename)
 
 
-    with open(link_file) as f:
 
-        verified_links = f.read().splitlines()
-    i = 0
-    while True:
+    for link in verified_links:
 
-        if url in verified_links[i]:
-            break
-        i += 1
+            if url in link:
+                working_link = link
+                break
 
-        if i > (len(verified_links) - 1) :
-            print('link' + ' ' + url +' not found')
-            raise 'gather'
+            else:
+                pass
 
-    return verified_links[i]
+    print('the link to your selected vpu and filename is ' + working_link)
+    return working_link
 
-
-
-def get_RPU_file(rpu,filename):
+def getrpufile(rpu,filename):
     '''
     A function to return the desired RPU file
 
@@ -534,72 +535,92 @@ def get_RPU_file(rpu,filename):
         filename takes any of the value in the RPU_Files list
     '''
 
+    verify_links()
 
     assert rpu in RPU_to_VPU.keys(), 'RPU must be one of the following ' + str(sorted(RPU_to_VPU.keys()))
 
     assert filename in RPU_Files, 'filename must be one of the following ' + str(sorted(RPU_Files))
 
-
-    vpu = RPU_to_VPU[rpu]
-    DA = VPU_to_DA[vpu]
-
-
-    if vpu in problematic_vpu_list:
-
-        url = '{0}{1}/NHDPlus{2}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(base_url, DA, vpu, rpu, filename)
-
-
-    else:
-
-        url = '{0}{1}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(base_url, DA, vpu, rpu, filename)
-
     with open(link_file) as f:
 
         verified_links = f.read().splitlines()
-    i = 0
-    while True:
 
-        if url in verified_links[i]:
-            break
-        i += 1
+    vpu = RPU_to_VPU[rpu]
+    DA = VPU_to_DA[vpu]
+    possible_urls = []
 
-        if i > (len(verified_links) - 1) :
-            print('link' + ' ' + url +' not found')
-            raise
+    if filename in problematic_rpu_files.keys():
+        possible_filenames = problematic_rpu_files[filename]
 
-    return verified_links[i]
+        if vpu in problematic_vpu_list:
+            for items in possible_filenames:
+                url = '{0}{1}/NHDPlus{2}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(base_url, DA, vpu, rpu, items)
+                possible_urls.append(url)
+                print(possible_urls)
 
+        else:
+            for items in possible_filenames:
+                url = '{0}{1}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(base_url, DA, vpu, rpu, items)
+                possible_urls.append(url)
+                print(possible_urls)
 
+        for link in verified_links:
+
+            for item in possible_urls:
+
+                if item in link:
+                    working_link = link
+                    break
+
+                else:
+                    pass
+
+    else:
+
+        if vpu in problematic_vpu_list:
+            url = '{0}{1}/NHDPlus{2}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(base_url, DA, vpu, rpu, filename)
+        else:
+            url = '{0}{1}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(base_url, DA, vpu, rpu, filename)
+
+        for link in verified_links:
+
+            if url in link:
+                working_link = link
+                break
+            else:
+                pass
+
+    print('the link to your selected rpu and filename is ' + working_link)
+    return working_link
 
 def verify_links():
-
+    print('verifying links')
     working_links = []
 
     if os.path.isfile(link_file):
 
         with open(link_file,'r') as source:
             links = source.read().splitlines()
+            print(link_file + ' has been read')
 
             for link in links:
 
                 try:
+                        print('trying ' + link)
                         req = Request(link, data=None,headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'})
                         response = urlopen(req)
                         working_links.append(link)
-                        break
+
                 except HTTPError or URLError:
                     print('the following link was broken ' + link)
                     a = link.split('/')[-1]
                     b = a.split('_')
 
                     if len(b) == 5:
-                        working_links.append(gather_vpu_links(vpu_input=b[2], filename_input=b[3]))
+                        working_links.append(str(gather_vpu_links(vpu_input=b[2], filename_input=b[3])))
 
                     else:
-                        working_links.append(gather_rpu_links(rpu_input=b[3], filename_input=b[4]))
-
-                    break
-
+                        working_links.append(str(gather_rpu_links(rpu_input=b[3], filename_input=b[4])))
 
         with open(link_file,'w') as corrected:
 
@@ -608,6 +629,7 @@ def verify_links():
                 corrected.write('%s\n' %items)
 
     else:
+        print('no file: {} creating new instance this will take awhile'.format(link_file) )
         with open(link_file,'w') as destination:
             vpu_links = gather_vpu_links()
             rpu_links = gather_rpu_links()
@@ -617,5 +639,3 @@ def verify_links():
 
             for items in rpu_links:
                 destination.write('%s\n' % items)
-
-verify_links()
