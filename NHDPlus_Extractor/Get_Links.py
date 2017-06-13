@@ -1,7 +1,7 @@
 import os
 from urllib.request import Request,urlopen
 from urllib.error import HTTPError,URLError
-
+import time
 
 base_url = 'https://s3.amazonaws.com/nhdplus/NHDPlusV21/Data/NHDPlus'
 
@@ -235,8 +235,7 @@ problematic_vpu_list = ['03N', '03S', '03W','05', '06', '07', '08',
 
 link_file = 'link.txt'
 
-known_exceptions = {(base_url+'GL/NHDPlusV21_GL_04_NHDPlusCatchment'):(base_url+'GL/NHDPlusV21_GL_04_NHDPlusCatchments'),
-                    (base_url+'CO/NHDPlus15/NHDPlusV21_CO_15_VogelExtension'):(base_url+'CO/NHDPlus15/NHDPlusV21_CO_15_VogelEXtension')}
+known_exceptions = {(base_url+'CO/NHDPlus15/NHDPlusV21_CO_15_VogelExtension'):(base_url+'CO/NHDPlus15/NHDPlusV21_CO_15_VogelEXtension')}
 
 
 
@@ -273,10 +272,11 @@ def gather_rpu_links(max_version=15, rpu_input=None, filename_input=None):
                         final_url = '{}_{:02d}.7z'.format(url,i)
 
                         try:
+                            time.sleep(0.1)
                             req = Request(final_url, data=None,headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'})
                             response = urlopen(req)
                             working_urls.append(final_url)
-                            print('FOUND ' + final_url)
+                            print('Found '+ final_url)
                             break
                         except HTTPError or URLError:
                             pass
@@ -293,10 +293,11 @@ def gather_rpu_links(max_version=15, rpu_input=None, filename_input=None):
 
 
                         try:
+                            time.sleep(0.1)
                             req = Request(final_url, data=None,headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'})
                             response = urlopen(req)
                             working_urls.append(final_url)
-                            print('FOUND '+ final_url)
+                            print('Found '+ final_url)
                             break
                         except HTTPError or URLError:
                             pass
@@ -321,10 +322,11 @@ def gather_rpu_links(max_version=15, rpu_input=None, filename_input=None):
                 final_url = '{}_{:02d}.7z'.format(url,i)
 
                 try:
+                    time.sleep(0.1)
                     req = Request(final_url, data=None,headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'})
                     response = urlopen(req)
                     working_link = final_url
-                    print('FOUND ' + final_url)
+                    print('Found '+ final_url)
                     break
                 except HTTPError or URLError:
                         pass
@@ -342,10 +344,11 @@ def gather_rpu_links(max_version=15, rpu_input=None, filename_input=None):
 
 
                 try:
+                    time.sleep(0.1)
                     req = Request(final_url, data=None,headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'})
                     response = urlopen(req)
                     working_link = final_url
-                    print('FOUND '+ final_url)
+                    print('Found '+ final_url)
                     break
                 except HTTPError or URLError:
                     pass
@@ -390,10 +393,11 @@ def gather_vpu_links(max_version=15, vpu_input=None, filename_input=None):
                         final_url = '{}_{:02d}.7z'.format(url,i)
 
                         try:
+                            time.sleep(0.1)
                             req = Request(final_url, data=None,headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'})
                             response = urlopen(req)
                             working_urls.append(final_url)
-                            print('FOUND '+final_url)
+                            print('Found '+ final_url)
                             break
                         except HTTPError or URLError:
                             pass
@@ -410,10 +414,11 @@ def gather_vpu_links(max_version=15, vpu_input=None, filename_input=None):
                         final_url = '{}_{:02d}.7z'.format(url,i)
 
                         try:
+                            time.sleep(0.1)
                             req = Request(final_url, data=None,headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'})
                             response = urlopen(req)
                             working_urls.append(final_url)
-                            print('FOUND '+ final_url)
+                            print('Found '+ final_url)
                             break
                         except HTTPError or URLError:
                             pass
@@ -441,10 +446,11 @@ def gather_vpu_links(max_version=15, vpu_input=None, filename_input=None):
                 final_url = '{}_{:02d}.7z'.format(url,i)
 
                 try:
+                    time.sleep(0.1)
                     req = Request(final_url, data=None,headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'})
                     response = urlopen(req)
                     working_link = final_url
-                    print('FOUND '+final_url)
+                    print('Found '+ final_url)
                     break
                 except HTTPError or URLError:
                     pass
@@ -461,10 +467,11 @@ def gather_vpu_links(max_version=15, vpu_input=None, filename_input=None):
                 final_url = '{}_{:02d}.7z'.format(url,i)
 
                 try:
+                    time.sleep(0.1)
                     req = Request(final_url, data=None,headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'})
                     response = urlopen(req)
                     working_link = final_url
-                    print('FOUND '+ final_url)
+                    print('Found '+ final_url)
                     break
                 except HTTPError or URLError:
                     pass
@@ -639,3 +646,5 @@ def verify_links():
 
             for items in rpu_links:
                 destination.write('%s\n' % items)
+
+verify_links()

@@ -46,6 +46,7 @@ https://s3.amazonaws.com/nhdplus/NHDPlusV21/Data/NHDPlusSA/NHDPlus03W/NHDPlusV21
 https://s3.amazonaws.com/nhdplus/NHDPlusV21/Data/NHDPlusGL/NHDPlusV21_GL_04_EROMExtension_10.7z
 https://s3.amazonaws.com/nhdplus/NHDPlusV21/Data/NHDPlusGL/NHDPlusV21_GL_04_NHDPlusAttributes_12.7z
 https://s3.amazonaws.com/nhdplus/NHDPlusV21/Data/NHDPlusGL/NHDPlusV21_GL_04_NHDPlusBurnComponents_07.7z
+https://s3.amazonaws.com/nhdplus/NHDPlusV21/Data/NHDPlusGL/NHDPlusV21_GL_04_NHDPlusCatchment_05.7z
 https://s3.amazonaws.com/nhdplus/NHDPlusV21/Data/NHDPlusGL/NHDPlusV21_GL_04_NHDSnapshot_08.7z
 https://s3.amazonaws.com/nhdplus/NHDPlusV21/Data/NHDPlusGL/NHDPlusV21_GL_04_VPUAttributeExtension_07.7z
 https://s3.amazonaws.com/nhdplus/NHDPlusV21/Data/NHDPlusGL/NHDPlusV21_GL_04_VogelExtension_06.7z
