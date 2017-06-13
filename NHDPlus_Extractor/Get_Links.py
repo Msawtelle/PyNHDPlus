@@ -613,10 +613,12 @@ def verify_links():
             for link in links:
 
                 try:
+                        time.sleep(0.1)
                         print('trying ' + link)
                         req = Request(link, data=None,headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'})
                         response = urlopen(req)
                         working_links.append(link)
+                        print('success')
 
                 except HTTPError or URLError:
                     print('the following link was broken ' + link)
