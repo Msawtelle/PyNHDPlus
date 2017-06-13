@@ -3,6 +3,7 @@ class NHDPlusExtractor(object):
     def __init__(self):
         super(NHDPlusExtractor, self).__init__()
 
+        import time
         import os
         from urllib.request import Request,urlopen
         from urllib.error import HTTPError,URLError
@@ -272,6 +273,7 @@ class NHDPlusExtractor(object):
                             final_url = '{}_{:02d}.7z'.format(url,i)
 
                             try:
+                                time.sleep(0.1)
                                 req = Request(final_url, data=None,headers=self.headers)
                                 response = urlopen(req)
                                 working_urls.append(final_url)
@@ -292,6 +294,7 @@ class NHDPlusExtractor(object):
 
 
                             try:
+                                time.sleep(0.1)
                                 req = Request(final_url, data=None,headers=self.headers)
                                 response = urlopen(req)
                                 working_urls.append(final_url)
@@ -320,6 +323,7 @@ class NHDPlusExtractor(object):
                     final_url = '{}_{:02d}.7z'.format(url,i)
 
                     try:
+                        time.sleep(0.1)
                         req = Request(final_url, data=None,headers=self.headers)
                         response = urlopen(req)
                         working_link = final_url
@@ -341,6 +345,7 @@ class NHDPlusExtractor(object):
 
 
                     try:
+                        time.sleep(0.1)
                         req = Request(final_url, data=None,headers=self.headers)
                         response = urlopen(req)
                         working_link = final_url
@@ -386,6 +391,7 @@ class NHDPlusExtractor(object):
                             final_url = '{}_{:02d}.7z'.format(url,i)
 
                             try:
+                                time.sleep(0.1)
                                 req = Request(final_url, data=None,headers=self.headers)
                                 response = urlopen(req)
                                 working_urls.append(final_url)
@@ -406,6 +412,7 @@ class NHDPlusExtractor(object):
                             final_url = '{}_{:02d}.7z'.format(url,i)
 
                             try:
+                                time.sleep(0.1)
                                 req = Request(final_url, data=None,headers=self.headers)
                                 response = urlopen(req)
                                 working_urls.append(final_url)
@@ -437,6 +444,7 @@ class NHDPlusExtractor(object):
                     final_url = '{}_{:02d}.7z'.format(url,i)
 
                     try:
+                        time.sleep(0.1)
                         req = Request(final_url, data=None,headers=self.headers)
                         response = urlopen(req)
                         working_link = final_url
@@ -457,6 +465,7 @@ class NHDPlusExtractor(object):
                     final_url = '{}_{:02d}.7z'.format(url,i)
 
                     try:
+                        time.sleep(0.1)
                         req = Request(final_url, data=None,headers=self.headers)
                         response = urlopen(req)
                         working_link = final_url
