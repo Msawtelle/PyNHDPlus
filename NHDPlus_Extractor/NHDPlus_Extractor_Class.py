@@ -1,5 +1,10 @@
 class NHDPlusExtractor(object):
-    """class which holds various methods to manipulate, gather, and unpack the NHDPlus Dataset """
+    """class which holds various methods to manipulate, gather, and unpack the NHDPlus Dataset
+       updated email list
+
+     """
+
+
     def __init__(self):
         super(NHDPlusExtractor, self).__init__()
 
