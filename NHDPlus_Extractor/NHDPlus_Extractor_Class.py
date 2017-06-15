@@ -249,7 +249,7 @@ class NHDPlusExtractor(object):
 
 
     def gather_rpu_links(max_version=15, rpu_input=None, filename_input=None):
-        '''l
+        '''
         A function to gather the working rpu links for the metadata text file
 
         max_version takes the highest know version of the files in the NHDPLUS Dataset
