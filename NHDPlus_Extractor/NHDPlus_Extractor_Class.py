@@ -626,9 +626,9 @@ class NHDPlusExtractor(object):
 
     def downloadvpufile(self, vpu, filename):
 
-        assert vpu_input in self.VPU_to_RPU.keys(), 'VPU must be in ' + str(sorted(self.VPU_to_RPU.keys()))
+        assert vpu in self.VPU_to_RPU.keys(), 'VPU must be in ' + str(sorted(self.VPU_to_RPU.keys()))
 
-        assert filename_input in self.VPU_Files, 'filename must be one of ' + str(self.VPU_Files)
+        assert filename in self.VPU_Files, 'filename must be one of ' + str(self.VPU_Files)
 
         link = self.getvpufile(vpu, filename)
         req = Request(link, data = None, headers = self.headers)
