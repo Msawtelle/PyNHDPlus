@@ -649,4 +649,3 @@ def verify_links():
                 destination.write('%s\n' % items)
 
 verify_links()
-print(os.path.dirname(os.path.realpath(__file__)))

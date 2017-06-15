@@ -1,18 +1,16 @@
+import time
+import os
+from urllib.request import urlopen, Request
+from urllib.error import HTTPError, URLError
+
 class NHDPlusExtractor(object):
     """class which holds various methods to manipulate, gather, and unpack the NHDPlus Dataset
        updated email list
 
      """
 
-
     def __init__(self):
         super(NHDPlusExtractor, self).__init__()
-
-        import time
-        import os
-        from urllib.request import Request,urlopen
-        from urllib.error import HTTPError,URLError
-
 
         #base_url to EPA's hosting of the NHDPlusV21 Dataset
         self.base_url = 'https://s3.amazonaws.com/nhdplus/NHDPlusV21/Data/NHDPlus'
@@ -318,6 +316,11 @@ class NHDPlusExtractor(object):
             return working_urls
 
         else:
+
+            assert rpu_input in self.RPU_to_VPU.keys(), 'RPU must be one of the following ' + str(sorted(self.RPU_to_VPU.keys()))
+
+            assert filename_input in self.RPU_Files, 'filename must be one of the following ' + str(sorted(self.RPU_Files))
+
             vpu = self.RPU_to_VPU[rpu_input]
             DA = self.VPU_to_DA[vpu]
 
@@ -436,6 +439,10 @@ class NHDPlusExtractor(object):
             return working_urls
 
         else:
+
+            assert vpu_input in self.VPU_to_RPU.keys(), 'VPU must be in ' + str(sorted(self.VPU_to_RPU.keys()))
+
+            assert filename_input in self.VPU_Files, 'filename must be one of ' + str(self.VPU_Files)
 
             DA = self.VPU_to_DA[vpu_input]
 
@@ -563,13 +570,13 @@ class NHDPlusExtractor(object):
                 for items in possible_filenames:
                     url = '{0}{1}/NHDPlus{2}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(self.base_url, DA, vpu, rpu, items)
                     possible_urls.append(url)
-                    print(possible_urls)
+
 
             else:
                 for items in possible_filenames:
                     url = '{0}{1}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(self.base_url, DA, vpu, rpu, items)
                     possible_urls.append(url)
-                    print(possible_urls)
+
 
             for link in verified_links:
 
@@ -600,6 +607,36 @@ class NHDPlusExtractor(object):
         print('the link to your selected rpu and filename is ' + working_link)
         return working_link
 
+    def downloadrpufile(self, rpu, filename):
 
-x = NHDPlusExtractor()
-x.getvpufile('01','EROMExtension')
+        assert rpu in self.RPU_to_VPU.keys(), 'RPU must be one of the following ' + str(sorted(self.RPU_to_VPU.keys()))
+
+        assert filename in self.RPU_Files, 'filename must be one of the following ' + str(sorted(self.RPU_Files))
+
+        link = self.getrpufile(rpu, filename)
+        req = Request(link, data = None, headers = self.headers)
+        response = urlopen(req)
+        CHUNK = 1024 * 1024
+        with open(link.split('/')[-1], 'wb') as f:
+            while True:
+                chunk = response.read(CHUNK)
+                if not chunk:
+                    break
+                f.write(chunk)
+
+    def downloadvpufile(self, vpu, filename):
+
+        assert vpu_input in self.VPU_to_RPU.keys(), 'VPU must be in ' + str(sorted(self.VPU_to_RPU.keys()))
+
+        assert filename_input in self.VPU_Files, 'filename must be one of ' + str(self.VPU_Files)
+
+        link = self.getvpufile(vpu, filename)
+        req = Request(link, data = None, headers = self.headers)
+        response = urlopen(req)
+        CHUNK = 1024 * 1024
+        with open(link.split('/')[-1], 'wb') as f:
+            while True:
+                chunk = response.read(CHUNK)
+                if not chunk:
+                    break
+                f.write(chunk)
