@@ -542,7 +542,6 @@ def getrpufile(rpu,filename):
         filename takes any of the value in the RPU_Files list
     '''
 
-    verify_links()
 
     assert rpu in RPU_to_VPU.keys(), 'RPU must be one of the following ' + str(sorted(RPU_to_VPU.keys()))
 
@@ -650,3 +649,4 @@ def verify_links():
                 destination.write('%s\n' % items)
 
 verify_links()
+print(os.path.dirname(os.path.realpath(__file__)))

@@ -12,6 +12,9 @@ class NHDPlusExtractor(object):
         #base_url to EPA's hosting of the NHDPlusV21 Dataset
         self.base_url = 'https://s3.amazonaws.com/nhdplus/NHDPlusV21/Data/NHDPlus'
 
+        self.currentpath = os.path.dirname(__file__)
+
+
         #names of the Drainage areas with respective abbreviations
         self.DD = {'AMERICAN SAMOA': 'PI',
               'ARK-RED-WHITE': 'MS',
@@ -233,16 +236,15 @@ class NHDPlusExtractor(object):
         #some vpu regions dont follow the standard url for the other regions this list notes those
         self.problematic_vpu_list = ['03N', '03S', '03W','05', '06', '07', '08',
                                 '10U', '14', '15', '10L', '11','22AS', '22GU', '22MP']
-        self.link_file = 'NHDPLUS_Links.txt'
-        self.known_exceptions = {(base_url+'GL/NHDPlusV21_GL_04_NHDPlusCatchment'):(base_url+'GL/NHDPlusV21_GL_04_NHDPlusCatchments'),
-                            (base_url+'CO/NHDPlus15/NHDPlusV21_CO_15_VogelExtension'):(base_url+'CO/NHDPlus15/NHDPlusV21_CO_15_VogelEXtension')}
+        self.link_file = os.path.join(self.currentpath,'link.txt')
+        self.known_exceptions = {(self.base_url+'CO/NHDPlus15/NHDPlusV21_CO_15_VogelExtension'):(self.base_url+'CO/NHDPlus15/NHDPlusV21_CO_15_VogelEXtension')}
 
         #headers to use when pinging the amazon servers
         self.headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'}
 
 
     def gather_rpu_links(max_version=15, rpu_input=None, filename_input=None):
-        '''
+        '''l
         A function to gather the working rpu links for the metadata text file
 
         max_version takes the highest know version of the files in the NHDPLUS Dataset
@@ -480,3 +482,119 @@ class NHDPlusExtractor(object):
                 pass
 
             return working_link
+
+    def getvpufile(self, vpu, filename):
+
+        '''
+        A function to return the desired VPU File
+
+        Arguments:
+            vpu takes any of the keys in the VPU_to_RPU dictionary as strings
+            filename takes any of the values in the VPU_Files list as strings
+
+        '''
+
+
+        assert vpu in self.VPU_to_RPU.keys(), 'VPU must be in ' + str(sorted(self.VPU_to_RPU.keys()))
+
+        assert filename in self.VPU_Files, 'filename must be one of ' + str(self.VPU_Files)
+
+        DA = self.VPU_to_DA[vpu]
+
+        with open(self.link_file) as f:
+
+            verified_links = f.read().splitlines()
+
+        if vpu in self.problematic_vpu_list:
+
+            url = '{0}{1}/NHDPlus{2}/NHDPlusV21_{1}_{2}_{3}'.format(self.base_url, DA, vpu, filename)
+
+        else:
+
+            url = '{0}{1}/NHDPlusV21_{1}_{2}_{3}'.format(self.base_url,DA,vpu,filename)
+
+
+
+        for link in verified_links:
+
+                if url in link:
+                    working_link = link
+                    break
+
+                else:
+                    pass
+
+        print('the link to your selected vpu and filename is ' + working_link)
+        return working_link
+
+    def getrpufile(self, rpu, filename):
+        '''
+        A function to return the desired RPU file
+
+        Arguments:
+            rpu takes any of the keys in the the RPU_to_VPU dictionary
+            filename takes any of the value in the RPU_Files list
+        '''
+
+        rpu = rpu.lower()
+
+        assert rpu in self.RPU_to_VPU.keys(), 'RPU must be one of the following ' + str(sorted(self.RPU_to_VPU.keys()))
+
+        assert filename in self.RPU_Files, 'filename must be one of the following ' + str(sorted(self.RPU_Files))
+
+        with open(self.link_file) as f:
+
+            verified_links = f.read().splitlines()
+
+        vpu = self.RPU_to_VPU[rpu]
+        DA = self.VPU_to_DA[vpu]
+        possible_urls = []
+
+        if filename in self.problematic_rpu_files.keys():
+            possible_filenames = self.problematic_rpu_files[filename]
+
+            if vpu in self.problematic_vpu_list:
+
+                for items in possible_filenames:
+                    url = '{0}{1}/NHDPlus{2}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(self.base_url, DA, vpu, rpu, items)
+                    possible_urls.append(url)
+                    print(possible_urls)
+
+            else:
+                for items in possible_filenames:
+                    url = '{0}{1}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(self.base_url, DA, vpu, rpu, items)
+                    possible_urls.append(url)
+                    print(possible_urls)
+
+            for link in verified_links:
+
+                for item in possible_urls:
+
+                    if item in link:
+                        working_link = link
+                        break
+
+                    else:
+                        pass
+
+        else:
+
+            if vpu in self.problematic_vpu_list:
+                url = '{0}{1}/NHDPlus{2}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(base_url, DA, vpu, rpu, filename)
+            else:
+                url = '{0}{1}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(self.base_url, DA, vpu, rpu, filename)
+
+            for link in verified_links:
+
+                if url in link:
+                    working_link = link
+                    break
+                else:
+                    pass
+
+        print('the link to your selected rpu and filename is ' + working_link)
+        return working_link
+
+
+x = NHDPlusExtractor()
+x.getvpufile('01','EROMExtension')
