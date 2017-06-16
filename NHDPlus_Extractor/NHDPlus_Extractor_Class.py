@@ -1,3 +1,4 @@
+import subprocess
 import time
 import os
 from urllib.request import urlopen, Request
@@ -9,13 +10,14 @@ class NHDPlusExtractor(object):
 
      """
 
-    def __init__(self):
+    def __init__(self, destination = r'C:\Users\User\Data'):
         super(NHDPlusExtractor, self).__init__()
 
         #base_url to EPA's hosting of the NHDPlusV21 Dataset
         self.base_url = 'https://s3.amazonaws.com/nhdplus/NHDPlusV21/Data/NHDPlus'
-
+        self.destination = destination
         self.currentpath = os.path.dirname(__file__)
+        self.path_to_7zip = r'C:\Program Files\7-Zip\7z.exe'
 
 
         #names of the Drainage areas with respective abbreviations
@@ -239,14 +241,14 @@ class NHDPlusExtractor(object):
         #some vpu regions dont follow the standard url for the other regions this list notes those
         self.problematic_vpu_list = ['03N', '03S', '03W','05', '06', '07', '08',
                                 '10U', '14', '15', '10L', '11','22AS', '22GU', '22MP']
-        self.link_file = os.path.join(self.currentpath,'link.txt')
+        self.link_file = os.path.join(self.destination,'link.txt')
         self.known_exceptions = {(self.base_url+'CO/NHDPlus15/NHDPlusV21_CO_15_VogelExtension'):(self.base_url+'CO/NHDPlus15/NHDPlusV21_CO_15_VogelEXtension')}
 
         #headers to use when pinging the amazon servers
         self.headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'}
 
 
-    def gather_rpu_links(max_version=15, rpu_input=None, filename_input=None):
+    def gather_rpu_links(self,max_version=15, rpu_input=None, filename_input=None):
         '''
         A function to gather the working rpu links for the metadata text file
 
@@ -371,7 +373,7 @@ class NHDPlusExtractor(object):
 
             return working_link
 
-    def gather_vpu_links(max_version=15, vpu_input=None, filename_input=None):
+    def gather_vpu_links(self,max_version=15, vpu_input=None, filename_input=None):
         '''
         A function to gather the working vpu links for the metadata text file
         max_version takes the highest known version of the files in the NHDPLUS Dataset
@@ -520,25 +522,30 @@ class NHDPlusExtractor(object):
         if vpu in self.problematic_vpu_list:
 
             url = '{0}{1}/NHDPlus{2}/NHDPlusV21_{1}_{2}_{3}'.format(self.base_url, DA, vpu, filename)
+            if url in self.known_exceptions.keys():
+                url = self.known_exceptions[url]
 
         else:
 
             url = '{0}{1}/NHDPlusV21_{1}_{2}_{3}'.format(self.base_url,DA,vpu,filename)
-
-
+            if url in self.known_exceptions.keys():
+                url = self.known_exceptions[url]
 
         for link in verified_links:
 
-                if url in link:
-                    working_link = link
-                    break
+            if url in link:
+                working_link = link
+                print('the link to your selected vpu and filename is ' + working_link)
+                return working_link
+            else:
+                pass
 
-                else:
-                    pass
-
-        print('the link to your selected vpu and filename is ' + working_link)
-        return working_link
-
+        try:
+            working_link
+        except NameError:
+            working_link = None
+            print('no link found for {} {}'.format(vpu, filename))
+            return working_link
     def getrpufile(self, rpu, filename):
         '''
         A function to return the desired RPU file
@@ -584,15 +591,23 @@ class NHDPlusExtractor(object):
 
                     if item in link:
                         working_link = link
-                        break
+                        print('the link to your selected rpu and filename is ' + working_link)
+                        return working_link
 
                     else:
                         pass
 
+            try:
+                working_link
+            except NameError:
+                working_link = None
+                print('no link found for {} {}'.format(rpu, filename))
+                return working_link
+
         else:
 
             if vpu in self.problematic_vpu_list:
-                url = '{0}{1}/NHDPlus{2}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(base_url, DA, vpu, rpu, filename)
+                url = '{0}{1}/NHDPlus{2}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(self.base_url, DA, vpu, rpu, filename)
             else:
                 url = '{0}{1}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(self.base_url, DA, vpu, rpu, filename)
 
@@ -600,12 +615,19 @@ class NHDPlusExtractor(object):
 
                 if url in link:
                     working_link = link
-                    break
+                    print('the link to your selected rpu and filename is ' + working_link)
+                    return working_link
+
                 else:
                     pass
 
-        print('the link to your selected rpu and filename is ' + working_link)
-        return working_link
+            try:
+                working_link
+            except NameError:
+                working_link = None
+                print('no link found for {} {}'.format(vpu, filename))
+                return working_link
+
 
     def downloadrpufile(self, rpu, filename):
 
@@ -614,10 +636,11 @@ class NHDPlusExtractor(object):
         assert filename in self.RPU_Files, 'filename must be one of the following ' + str(sorted(self.RPU_Files))
 
         link = self.getrpufile(rpu, filename)
+        filename = link.split('/')[-1]
         req = Request(link, data = None, headers = self.headers)
         response = urlopen(req)
         CHUNK = 1024 * 1024
-        with open(link.split('/')[-1], 'wb') as f:
+        with open(os.path.join(self.destination, filename), 'wb') as f:
             while True:
                 chunk = response.read(CHUNK)
                 if not chunk:
@@ -631,12 +654,129 @@ class NHDPlusExtractor(object):
         assert filename in self.VPU_Files, 'filename must be one of ' + str(self.VPU_Files)
 
         link = self.getvpufile(vpu, filename)
+        filename = link.split('/')[-1]
         req = Request(link, data = None, headers = self.headers)
         response = urlopen(req)
         CHUNK = 1024 * 1024
-        with open(link.split('/')[-1], 'wb') as f:
+        with open(os.path.join(self.destination, filename), 'wb') as f:
             while True:
                 chunk = response.read(CHUNK)
                 if not chunk:
                     break
                 f.write(chunk)
+
+
+    def decompress(self,filename):
+
+        '''
+        identifies operating system and decompresses with the appropriate method
+        filename takes full path to file to be decompressed
+        '''
+
+        if os.name == 'posix':
+            self.decompress_linux(filename)
+        elif os.name == 'nt':
+            self.decompress_windows(filename)
+        else:
+            print('unknown operating system')
+            raise
+
+
+    def decompress_windows(self,
+                           filename,
+                           ):
+        """
+        Spawns a subprocess to use 7zip to decompress the file.
+        filename takes fullpath of file to be decompressed
+        """
+
+
+
+        if not os.path.isfile(self.path_to_7zip):
+            print('error: specified path to 7zip ' +
+                  '{} does not exist!\n'.format(self.path_to_7zip))
+            raise
+
+        args = [self.path_to_7zip, 'x', '-o{}'.format(self.destination),
+                filename]
+
+        try:
+
+            with subprocess.Popen(args) as p: pass
+
+        except:
+
+            print('error: unable to decompress files')
+            print('is 7zip installed?')
+
+    def decompress_linux(self, filename):
+        """
+        Unzips the archive on linux.
+        filename takes fullpath of file of be decompressed
+        """
+
+        args = ['7z', 'x', '-o{}'.format(self.destination), filename]
+
+        try:
+
+            with subprocess.Popen(args) as p: pass
+
+        except:
+
+            print('error: unable to decompress files')
+            print('is 7zip installed?')
+
+    def verify_links(self):
+
+        '''
+        function to verify all the links in the metadata file are up to date
+        '''
+        print('verifying links')
+        working_links = []
+
+        if os.path.isfile(self.link_file):
+
+            source = open(self.link_file)
+            links = source.read().splitlines()
+            print(str(self.link_file) + ' has been read')
+            source.close()
+
+            for link in links:
+
+                try:
+                        time.sleep(0.1)
+                        print('trying ' + link)
+                        req = Request(link, data=None, headers=self.headers)
+                        working_links.append(link)
+                        print('success')
+
+                except HTTPError or URLError:
+                    print('the following link was broken ' + link)
+                    a = link.split('/')[-1]
+                    b = a.split('_')
+
+                    if len(b) == 5:
+                        working_links.append(str(self.gather_vpu_links(vpu_input=b[2], filename_input=b[3])))
+
+                    else:
+                        working_links.append(str(self.gather_rpu_links(rpu_input=b[3], filename_input=b[4])))
+
+                with open(self.link_file,'w') as corrected:
+
+                    for items in working_links:
+
+                        corrected.write('%s\n' %items)
+
+        else:
+            print('no file: {} creating new instance this will take awhile'.format(self.link_file) )
+
+            vpu_links = self.gather_vpu_links()
+            rpu_links = self.gather_rpu_links()
+
+            with open(self.link_file,'w') as destination:
+
+                for items in vpu_links:
+                    destination.write('%s\n' % items)
+
+                for items in rpu_links:
+                    destination.write('%s\n' % items)
