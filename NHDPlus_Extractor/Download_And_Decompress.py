@@ -24,7 +24,7 @@ for vpu in sorted(x.VPU_to_RPU.keys()):
             continue
 
         if os.path.exists(os.path.join(x.destination, y)):
-            print(y + 'already exists moving on')
+            print(y + ' already exists moving on')
             pass
 
         else:
@@ -42,7 +42,7 @@ for rpu in sorted(x.RPU_to_VPU.keys()):
             continue
 
         if os.path.exists(os.path.join(x.destination, y)):
-            print(y + 'already exists moving on')
+            print(y + ' already exists moving on')
             pass
 
         else:
