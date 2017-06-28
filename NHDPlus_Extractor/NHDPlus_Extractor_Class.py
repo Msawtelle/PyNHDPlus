@@ -9,6 +9,7 @@ from flowline import Flowline
 from vectorutils import merge_shapes
 from shapefile import Reader, Writer
 
+
 class NHDPlusExtractor(object):
     """class which holds various methods to manipulate, gather, and unpack the NHDPlus Dataset
        updated email list
@@ -1065,10 +1066,11 @@ class NHDPlusExtractor(object):
         if comids is not None: # make sure the format is correct
             for i in range(len(comids)):
                 if isinstance(comids[i], int):
+                    print(comids[i])
                     comids[i] = str(comids[i])
                     while len(comids[i]) < 9: comids[i] = ' ' + comids[i]
-                assert isinstance(comids[i], str)
-                assert len(comids[i]) == 9
+                    assert isinstance(comids[i], str)
+                    assert len(comids[i]) == 9
 
         if attributes is not None:
             if isinstance(attributes, str): attributes = [attributes]
@@ -1091,9 +1093,9 @@ class NHDPlusExtractor(object):
         for fieldno in range(numfields):
             name, typ, length, deci = struct.unpack('<11sc4xBB14x', f.read(32))
 
-            name = name.decode('utf-8').split('\x00')[0]
+            name = name.decode('cp1252').split('\x00')[0]
             names.append(name)
-            types.append(typ.decode('utf-8'))
+            types.append(typ.decode('cp1252'))
             lengths.append(length)
             decimals.append(deci)
 
@@ -1133,7 +1135,7 @@ class NHDPlusExtractor(object):
             indices = (i for i in range(len(all_comids)))
         else:
             indices = (i for i in range(len(all_comids))
-                       if all_comids[i].decode('utf-8') in comids)
+                       if all_comids[i].decode('cp1252') in comids)
 
         # go through the attributes and add them to dictionary of lists as needed
 
@@ -1146,7 +1148,7 @@ class NHDPlusExtractor(object):
 
         for i in indices:
             for n, t, d, j in ntdjs:
-                values[n].append(self.dbf_format(all_values[j][i].decode('utf-8'), t, d))
+                values[n].append(self.dbf_format(all_values[j][i].decode('cp1252'), t, d))
 
         f.close()
 
@@ -1226,12 +1228,12 @@ class NHDPlusExtractor(object):
 
             record = records[i]
 
-            # little work around for blank GNIS_ID and GNIS_NAME values
+            #little work around for blank GNIS_ID and GNIS_NAME values
 
-            # if isinstance(record[3], bytes):
-            #     record[3] = record[3].decode('ASCII')
-            # if isinstance(record[4], bytes):
-            #     record[4] = record[4].decode('ASCII')
+            if isinstance(record[3], bytes):
+                record[3] = record[3].decode('cp1252')
+            if isinstance(record[4], bytes):
+                record[4] = record[4].decode('cp1252')
 
             w.record(*record)
 
@@ -1263,7 +1265,7 @@ class NHDPlusExtractor(object):
         shapefile = Reader(source)
 
         # get the index of the feature id, which links to the flowline comid
-
+        print(shapefile.fields)
         featureid_index = shapefile.fields.index(['FEATUREID', 'N', 9, 0]) - 1
 
         # go through the comids from the flowlines and add the corresponding
@@ -1410,7 +1412,7 @@ class NHDPlusExtractor(object):
                      elevfile      = 'elevations.tif', # NED raster file
                      plotfile      = 'watershed',      # plot of the results
                      verbose       = True,             # print verbosity
-                     vverbose      = False,            # print verbosity
+                     vverbose      = True,            # print verbosity
                      ):
         """
         Creates shapefiles for the NHDPlus flowlines and catchments for an
@@ -1421,7 +1423,7 @@ class NHDPlusExtractor(object):
         #getting proper files for vpu and huc8 selected
 
         DA = self.VPU_to_DA[VPU]
-        RPU = self.VPU_to_RPU[VPU]
+
 
         destination = '{}/NHDPlus{}'.format(self.destination, DA)
         NHDPlus = '{}/NHDPlus{}'.format(destination, VPU)
@@ -1446,7 +1448,7 @@ class NHDPlusExtractor(object):
         # NED rasters -- there is more than one per VPU
         nedfiles = ['{}/NEDSnapshot/Ned{}/elev_cm'.format(NHDPlus,RPU)
                          for RPU in self.VPU_to_RPU[VPU]]
-
+        print(nedfiles)
         start = time.time()
 
         # if the destination folder for the HUC8 does not exist, make it
@@ -1476,10 +1478,10 @@ class NHDPlusExtractor(object):
 
         p = '{}/{}'.format(output, catchmentfile)
         if not os.path.isfile(p + '.shp'):
-            ffile = '{}/{}'.format(output, flowlinefile)
+
             if verbose:
                 print('extracting catchment shapefile for {}\n'.format(HUC8))
-            self.extract_catchments(sourececatchmentfile, p, ffile,
+            self.extract_catchments(sourececatchmentfile, p, sourceflowlinefile,
                                     verbose = vverbose)
 
         p = '{}/{}'.format(output, VAAfile)
@@ -1549,12 +1551,19 @@ class NHDPlusExtractor(object):
             # and make a dictionary linking the comids to hydroseqs
 
             flowlines = {}
-
+            print('making flowline dictionary')
+            i = 0
             for flowlineVAAs in zip(*(flowvalues[a] for a in flowattributes)):
+                print(flowlineVAAs)
                 flowlines[flowlineVAAs[1]] = Flowline(*flowlineVAAs)
+                i += 1
+                print(i)
 
+            print(str(len(slopevalues['ComID'])))
             for f in flowlines:
+                print(flowlines[f].comid)
                 i = slopevalues['ComID'].index(flowlines[f].comid)
+
                 flowlines[f].add_slope(slopevalues['MaxElevSmo'][i],
                                        slopevalues['MinElevSmo'][i],
                                        slopevalues['SlopeLenKm'][i])
