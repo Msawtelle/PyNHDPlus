@@ -8,7 +8,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from flowline import Flowline
 from vectorutils import merge_shapes
 from shapefile import Reader, Writer
-
+import dbf
 
 class NHDPlusExtractor(object):
     """class which holds various methods to manipulate, gather, and unpack the NHDPlus Dataset
@@ -1481,7 +1481,7 @@ class NHDPlusExtractor(object):
 
             if verbose:
                 print('extracting catchment shapefile for {}\n'.format(HUC8))
-            self.extract_catchments(sourececatchmentfile, p, sourceflowlinefile,
+            self.extract_catchments(sourececatchmentfile, p, '{}/{}'.format(output, flowlinefile),
                                     verbose = vverbose)
 
         p = '{}/{}'.format(output, VAAfile)
@@ -1507,8 +1507,8 @@ class NHDPlusExtractor(object):
                                   comids = comids,
                                   verbose = vverbose)
             except:
-                flowattributes = ['ComID', 'HydroSeq', 'DnHydroSeq', 'UpHydroSeq',
-                                  'TotDASqKm', 'AreaSqKm', 'DivDASqKm','ReachCode']
+                flowattributes = ['COMID', 'HYDROSEQ', 'DNHYDROSEQ', 'UPHYDROSEQ',
+                                  'TOTDASQKM', 'AREASQKM', 'DIVDASQKM','REACHCODE']
                 flowvalues = self.read_dbf(PlusFlowlineVAAfile,
                                   attributes = flowattributes,
                                   comids = comids,
@@ -1538,7 +1538,7 @@ class NHDPlusExtractor(object):
                                    verbose = vverbose)
             # get the flow and velocity data
             print(slopevalues)
-            eromattributes = ['ComID', 'Q0001E', 'V0001E', 'SMGageID']
+            eromattributes = ['COMID', 'Q0001E', 'V0001E', 'SMGAGEID']
 
             if verbose: print('reading EROM model attributes for ' +
                               '{}\n'.format(HUC8))
