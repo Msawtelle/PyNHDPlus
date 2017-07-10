@@ -8,7 +8,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from flowline import Flowline
 from vectorutils import merge_shapes
 from shapefile import Reader, Writer
-import dbf
+
 
 class NHDPlusExtractor(object):
     """class which holds various methods to manipulate, gather, and unpack the NHDPlus Dataset
@@ -1152,7 +1152,7 @@ class NHDPlusExtractor(object):
 
         f.close()
 
-        return values
+    
 
     def get_comids(self, flowlinefile):
         """
@@ -1195,10 +1195,12 @@ class NHDPlusExtractor(object):
 
         # figure out which field codes are the Reach code and comid
 
-        try:
-            reach_index = shapefile.fields.index(['REACHCODE', 'C', 14, 0]) - 1
-        except:
-            reach_index = shapefile.fields.index(['ReachCode','C', 14, 0]) - 1
+        fields = shapefile.fields[1:]
+        fields = [item[0].upper() for item in fields]
+
+        for pos, j in enumerate(fields):
+            if j == 'REACHCODE':
+                reach_index = pos
 
         # go through the reach indices, add add them to the list of flowlines
         # if in the watershed; also make a list of the corresponding comids
@@ -1558,6 +1560,7 @@ class NHDPlusExtractor(object):
                 flowlines[flowlineVAAs[1]] = Flowline(*flowlineVAAs)
                 i += 1
                 print(i)
+            print(flowlines)
 
             print(str(len(slopevalues['ComID'])))
             for f in flowlines:
