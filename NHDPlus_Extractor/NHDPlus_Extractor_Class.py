@@ -1032,127 +1032,52 @@ class NHDPlusExtractor(object):
 
             return values, [origin[0] - rx, origin[1] - ry]
 
-    def dbf_format(self, value, typ, deci):
-        """formats a value from a dbf file."""
+    def read_dbf(self, source, comids, attributes = None,verbose=True):
+        record=[] #empty list to hold singular record
+        records=[] #empty list to hold multiple record
+        temp = {} #dictionary mapping values to fields example temp['COMID'] = [7621376,24557283]
+        index=[] #index of the requested attributes in the dbf
+        mydbf = open(source,'rb')#open dbf file
+        sf = Reader(dbf=mydbf)#use PyShp to read dbf
+        fields = sf.fields[1:]#list of the fields from the dbf excluding the DeletionFlag
+        fields = [item[0].upper() for item in fields]#capitalize the names of the fields and remove the other qualitites of the fields
 
-        if   typ == 'C':
-            value = value.strip()
-        elif typ == 'D':
-            if len(value.strip()) == 8:
-                value=datetime.date(int(value[:4]),int(value[4:6]),int(value[6:8]))
-            else: value = '<null>'
-        elif typ == 'N' and deci > 0:
-            if value == '': value = 0
-            else: value = float(value.strip())
-        elif typ == 'N' and deci == 0:
-            if value == '': value = 0
-            else: value = int(value.strip())
-        elif typ == 'L':
-            value = (value in 'YyTt' and 'T') or (value in 'NnFf' and 'F') or '?'
-        elif typ == 'F':
-            value = float(value)
 
-        return value
+        #iterate over the dbf file accessing the records using attributes as a fields
+        ##query. if attributes is none return all the records for all the fields
+        if attributes is None: attributes = fields
 
-    def read_dbf(self, filename, attributes = None, comids = None, verbose = True):
-        """
-        Reads data from a .dbf dataset for a given set of comids.
 
-        filename   -- The path to the dbf file
-        attributes -- A list of the attributes to get. If None, returns all.
-        comids     -- The unique identifiers in the database. If None, returns all.
-        """
+        for attribute in attributes:
+            if attribute == ['COMID', 'N', 9, 0]:
+                comid_index = [pos for pos,j in enumerate(fields) if attribute[0] == j]
+                if verbose is True:
+                    print('the comid_index is ' + str(comid_index[0]))
 
-        if comids is not None: # make sure the format is correct
-            for i in range(len(comids)):
-                if isinstance(comids[i], int):
-                    print(comids[i])
-                    comids[i] = str(comids[i])
-                    while len(comids[i]) < 9: comids[i] = ' ' + comids[i]
-                    assert isinstance(comids[i], str)
-                    assert len(comids[i]) == 9
+            index.append([pos for pos,j in enumerate(fields) if attribute[0] == j][0])
 
-        if attributes is not None:
-            if isinstance(attributes, str): attributes = [attributes]
-            assert isinstance(attributes, list)
+        if verbose is True:
+            print('iterating over records finding matching comids from list given')
+        for pos,rec in enumerate(sf.records()):
 
-        if verbose: print('reading database %s\n' % filename)
+            if rec[comid_index[0]] in comids:
+                for indice in index:
+                    record.append(rec[indice])
+                if verbose is True:
+                    print('data for {} has been collected'.format(rec[comid_index[0]]))
+                records.append(record)
+                record = []
 
-        f = open(filename, 'rb')
+        for field in attributes:
+            y = attributes.index(field)
+            field = field[0]
+            temp[field]=[]
+            for record in records:
+                print(record[y])
+                temp[field].append(record[y])
 
-        # read the field descriptions
+        return temp
 
-        numrec, lenheader = struct.unpack('<xxxxLH22x', f.read(32))
-        numfields = (lenheader - 33) // 32
-
-        names    = ['DeletionFlag']
-        types    = ['C']
-        lengths  = [1]
-        decimals = [0]
-
-        for fieldno in range(numfields):
-            name, typ, length, deci = struct.unpack('<11sc4xBB14x', f.read(32))
-
-            name = name.decode('cp1252').split('\x00')[0]
-            names.append(name)
-            types.append(typ.decode('cp1252'))
-            lengths.append(length)
-            decimals.append(deci)
-
-        if attributes is None: attributes = names
-
-        # find the comid and attribute indices
-
-        try:        comid_index = names.index('COMID')
-        except:
-            try:    comid_index = names.index('ComID')
-            except: comid_index = names.index('Comid')
-
-        # figure out the range of bytes that are comids
-
-        start = sum(lengths[:comid_index])
-        end = start + lengths[comid_index]
-
-        # figure out the length of each field in the records
-
-        fmt = ''.join(['%ds' % l for l in lengths])
-        fmtsiz = struct.calcsize(fmt)
-
-        # read the records into a numpy array; need a  work around for the
-        # first record, which has '\r' instead of a blank
-
-        records = [struct.unpack('2' + fmt[1:], f.read(fmtsiz + 1))]
-
-        # get the rest of the records as a list of types
-
-        records = records + [struct.unpack(fmt, f.read(fmtsiz))
-                             for i in range(1,numrec)]
-
-        all_values = [v for v in zip(*records)]
-        all_comids = all_values[comid_index]
-
-        if comids is None:
-            indices = (i for i in range(len(all_comids)))
-        else:
-            indices = (i for i in range(len(all_comids))
-                       if all_comids[i].decode('cp1252') in comids)
-
-        # go through the attributes and add them to dictionary of lists as needed
-
-        values = {}
-        ntdjs   = []
-        for a in attributes:
-            values[a] = []
-            j = names.index(a)
-            ntdjs.append((names[j], types[j], decimals[j], j))
-
-        for i in indices:
-            for n, t, d, j in ntdjs:
-                values[n].append(self.dbf_format(all_values[j][i].decode('cp1252'), t, d))
-
-        f.close()
-
-    
 
     def get_comids(self, flowlinefile):
         """
@@ -1445,12 +1370,12 @@ class NHDPlusExtractor(object):
         PlusFlowlineVAAfile = '{}/{}/PlusFlowlineVAA.dbf'.format(*its)
 
         #EROM database
-        eromfile = '{}/EROMExtension/EROM_MA0001.DBF'.format(NHDPlus)
+        eromfile = '{}/EROMExtension/EROM_MA0001.dbf'.format(NHDPlus)
 
         # NED rasters -- there is more than one per VPU
         nedfiles = ['{}/NEDSnapshot/Ned{}/elev_cm'.format(NHDPlus,RPU)
                          for RPU in self.VPU_to_RPU[VPU]]
-        print(nedfiles)
+
         start = time.time()
 
         # if the destination folder for the HUC8 does not exist, make it
@@ -1489,65 +1414,48 @@ class NHDPlusExtractor(object):
         p = '{}/{}'.format(output, VAAfile)
         if not os.path.isfile(p):
 
-            # get the comids using the flowline shapefile
-
+        # get the comids using the flowline shapefile
             ffile = '{}/{}'.format(output, flowlinefile)
             comids = self.get_comids(ffile)
 
-            # read hydrologic sequence and drainage attributes from the database
+        # read hydrologic sequence and drainage attributes from the database
 
 
 
             if verbose:
-                print('reading flowline value added attributes for ' +
-                      '{}\n'.format(HUC8))
-            try:
-                flowattributes = ['ComID', 'Hydroseq', 'DnHydroseq', 'UpHydroseq',
-                                  'TotDASqKM', 'AreaSqKM', 'DivDASqKM','ReachCode']
-                flowvalues = self.read_dbf(PlusFlowlineVAAfile,
-                                  attributes = flowattributes,
-                                  comids = comids,
-                                  verbose = vverbose)
-            except:
-                flowattributes = ['COMID', 'HYDROSEQ', 'DNHYDROSEQ', 'UPHYDROSEQ',
-                                  'TOTDASQKM', 'AREASQKM', 'DIVDASQKM','REACHCODE']
-                flowvalues = self.read_dbf(PlusFlowlineVAAfile,
-                                  attributes = flowattributes,
-                                  comids = comids,
-                                  verbose = vverbose)
-            # read the slope data from the database
+                print('reading flowline value added attributes for ' + '{}\n'.format(HUC8))
 
-            slopeattributes = ['COMID', 'MAXELEVSMO', 'MINELEVSMO',
-                               'SLOPELENKM']
+            flowattributes = [['COMID', 'N', 9, 0], ['HYDROSEQ', 'N', 11, 0], ['UPHYDROSEQ','N', 11, 0],
+                              ['DNHYDROSEQ','N', 11, 0], ['REACHCODE', 'C', 14, 0],['AREASQKM', 'N', 15, 6],
+                              ['TOTDASQKM','N', 15, 6], ['DIVDASQKM','N', 15, 6]]
+            flowvalues = self.read_dbf(PlusFlowlineVAAfile,
+                                      attributes = flowattributes,
+                                      comids = comids,
+                                      verbose = vverbose)
+                # read the slope data from the database
+
+
 
             if verbose:
                 print('reading slope and elevation attributes for ' +
-                      '{}\n'.format(HUC8))
+                          '{}\n'.format(HUC8))
 
-            try:
-                slopeattributes = ['COMID', 'MAXELEVSMO', 'MINELEVSMO',
-                                   'SLOPELENKM']
-                slopevalues = self.read_dbf(elevslopefile,
-                                   attributes = slopeattributes,
-                                   comids = comids,
-                                   verbose = vverbose)
-            except:
-                slopeattributes = ['ComID', 'MaxElevSmo', 'MinElevSmo',
-                                   'SlopeLenKm']
-                slopevalues = self.read_dbf(elevslopefile,
-                                   attributes = slopeattributes,
-                                   comids = comids,
-                                   verbose = vverbose)
+            slopeattributes = [['COMID', 'N',9, 0], ['MAXELEVSMO', 'N', 12, 3], ['MINELEVSMO', 'N', 12, 3],['SLOPELENKM', 'N', 8, 3]]
+            slopevalues = self.read_dbf(elevslopefile,
+                                       attributes = slopeattributes,
+                                       comids = comids,
+                                       verbose = vverbose)
+
             # get the flow and velocity data
-            print(slopevalues)
-            eromattributes = ['COMID', 'Q0001E', 'V0001E', 'SMGAGEID']
+
+            eromattributes = [['ComID', 'N', 9, 0],  ['Q0001E', 'N', 15, 3], ['V0001E', 'N', 14, 5], ['SMGageID', 'C', 16, 0]]
 
             if verbose: print('reading EROM model attributes for ' +
-                              '{}\n'.format(HUC8))
+                                  '{}\n'.format(HUC8))
             eromvalues = self.read_dbf(eromfile,
-                                  attributes = eromattributes,
-                                  comids = comids,
-                                  verbose = vverbose)
+                                      attributes = eromattributes,
+                                      comids = comids,
+                                      verbose = vverbose)
 
             # store the flowline data in a dictionary using hydroseqs as keys
             # and make a dictionary linking the comids to hydroseqs
@@ -1560,23 +1468,23 @@ class NHDPlusExtractor(object):
                 flowlines[flowlineVAAs[1]] = Flowline(*flowlineVAAs)
                 i += 1
                 print(i)
-            print(flowlines)
+                print(flowlines)
 
-            print(str(len(slopevalues['ComID'])))
+
             for f in flowlines:
-                print(flowlines[f].comid)
-                i = slopevalues['ComID'].index(flowlines[f].comid)
 
-                flowlines[f].add_slope(slopevalues['MaxElevSmo'][i],
-                                       slopevalues['MinElevSmo'][i],
-                                       slopevalues['SlopeLenKm'][i])
-                i = eromvalues['ComID'].index(flowlines[f].comid)
+                i = slopevalues['COMID'].index(flowlines[f].comid)
+
+                flowlines[f].add_slope(slopevalues['MAXELEVSMO'][i],
+                                           slopevalues['MINELEVSMO'][i],
+                                           slopevalues['SLOPELENKM'][i])
+                i = eromvalues['COMID'].index(flowlines[f].comid)
                 flowlines[f].add_flow(eromvalues['Q0001E'][i],
-                                      eromvalues['V0001E'][i],
-                                      eromvalues['SMGageID'][i])
+                                          eromvalues['V0001E'][i],
+                                          eromvalues['SMGAGEID'][i])
                 flowlines[f].estimate_traveltime()
 
-            # save the data in a dictionary for future use
+                # save the data in a dictionary for future use
 
             with open(p, 'wb') as f: pickle.dump(flowlines, f)
 
