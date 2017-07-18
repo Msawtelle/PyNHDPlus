@@ -8,7 +8,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from flowline import Flowline
 from vectorutils import merge_shapes
 from shapefile import Reader, Writer
-
+import pickle
 
 class NHDPlusExtractor(object):
     """class which holds various methods to manipulate, gather, and unpack the NHDPlus Dataset
@@ -1376,6 +1376,8 @@ class NHDPlusExtractor(object):
         nedfiles = ['{}/NEDSnapshot/Ned{}/elev_cm'.format(NHDPlus,RPU)
                          for RPU in self.VPU_to_RPU[VPU]]
 
+        print(nedfiles)
+
         start = time.time()
 
         # if the destination folder for the HUC8 does not exist, make it
@@ -1448,7 +1450,7 @@ class NHDPlusExtractor(object):
 
             # get the flow and velocity data
 
-            eromattributes = [['ComID', 'N', 9, 0],  ['Q0001E', 'N', 15, 3], ['V0001E', 'N', 14, 5], ['SMGageID', 'C', 16, 0]]
+            eromattributes = [['COMID', 'N', 9, 0],  ['Q0001E', 'N', 15, 3], ['V0001E', 'N', 14, 5], ['SMGAGEID', 'C', 16, 0]]
 
             if verbose: print('reading EROM model attributes for ' +
                                   '{}\n'.format(HUC8))
@@ -1463,7 +1465,7 @@ class NHDPlusExtractor(object):
             flowlines = {}
             print('making flowline dictionary')
             i = 0
-            for flowlineVAAs in zip(*(flowvalues[a] for a in flowattributes)):
+            for flowlineVAAs in zip(*(flowvalues[a[0]] for a in flowattributes)):
                 print(flowlineVAAs)
                 flowlines[flowlineVAAs[1]] = Flowline(*flowlineVAAs)
                 i += 1
@@ -1499,7 +1501,7 @@ class NHDPlusExtractor(object):
 
         end = time.time()
         t = end - start
-
+        print('stop')
         if verbose:
 
             print('successfully queried NHDPlus data for {} '.format(HUC8) +
