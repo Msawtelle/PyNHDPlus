@@ -1,4 +1,6 @@
-import subprocess, time, os, gdal, numpy, struct, datetime, shutil
+import subprocess, time, os, numpy, struct, datetime, shutil
+from osgeo import gdal
+from osgeo import osr
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError, URLError
 from gdalconst import GA_ReadOnly
@@ -789,7 +791,7 @@ class NHDPlusExtractor(object):
                 for items in rpu_links:
                     destination.write('%s\n' % items)
 
-    def get_degree_transform(dataset):
+    def get_degree_transform(self, dataset):
         """
         Gets a GDAL transform to convert coordinate latitudes and longitudes
         to northings and eastings associated with the NAD 1983 projection.
@@ -974,22 +976,22 @@ class NHDPlusExtractor(object):
         # get the pixel values of the min longitudes and latitudes and the number
         # of pixels in each direction
 
-        pxmin  = min([get_pixel(x, x0, w) for x in xs])
-        pymin  = min([get_pixel(y, y0, h) for y in ys])
-        width  = max([get_pixel(x, x0, w) for x in xs]) - pxmin
-        height = max([get_pixel(y, y0, h) for y in ys]) - pymin
+        pxmin  = min([self.get_pixel(x, x0, w) for x in xs])
+        pymin  = min([self.get_pixel(y, y0, h) for y in ys])
+        width  = max([self.get_pixel(x, x0, w) for x in xs]) - pxmin
+        height = max([self.get_pixel(y, y0, h) for y in ys]) - pymin
 
         # find the location of the origin (pixels are integers, degrees are reals)
 
-        rx = get_remainder(min(xs), x0, w)
-        ry = get_remainder(min(ys), y0, h)
+        rx = self.get_remainder(min(xs), x0, w)
+        ry = self.get_remainder(min(ys), y0, h)
 
         origin = [min(xs), min(ys)]
 
         # pre-allocate some space to store the lat/long of each pixel and the value
 
-        latitudes  = empty((height, width), dtype = 'float')
-        longitudes = empty((height, width), dtype = 'float')
+        latitudes  = numpy.empty((height, width), dtype = 'float')
+        longitudes = numpy.empty((height, width), dtype = 'float')
 
         # read the band
 
@@ -998,7 +1000,7 @@ class NHDPlusExtractor(object):
         # iterate through the file, noting that pixels start at top left and move
         # down and right, and the y values move up
 
-        values = empty((height, width), dtype = dtype)
+        values = numpy.empty((height, width), dtype = dtype)
 
         if locations:
 
@@ -1073,7 +1075,6 @@ class NHDPlusExtractor(object):
             field = field[0]
             temp[field]=[]
             for record in records:
-                print(record[y])
                 temp[field].append(record[y])
 
         return temp
@@ -1226,9 +1227,50 @@ class NHDPlusExtractor(object):
             w.record(*records[i])
 
         w.save(destination)
+    def combine_NED(self, nedfiles, VPU):
+        '''
+        combines all NED files in the RPU regions for specified VPU into one big file for simplicity
+
+        arguments:
+            nedfiles: list of nedfiles for specified region
+            VPU Vector Proecessing Unit specified
+        '''
+        DA = self.VPU_to_DA[VPU]
+
+
+        destination = '{}/NHDPlus{}'.format(self.destination, DA)
+        NHDPlus = '{}/NHDPlus{}'.format(destination, VPU)
+
+        inmosaic = 'mosaic_{}.vrt'.format(DA)
+        vrtcommand = 'gdalbuildvrt {}'.format(inmosaic)
+        outmosaic = 'mosaic_{}.tif'.format(DA)
+
+        #path to combined NED file
+        nedfilepath = '{}/NEDSnapshot/Combined_NED'.format(NHDPlus)
+        if not os.path.exists(nedfilepath):
+            os.makedirs(nedfilepath)
+        newfile = '{}/{}'.format(nedfilepath, outmosaic)
+        for f in nedfiles:
+            vrtcommand = vrtcommand + ' ' + f
+
+        print('making combined file this might take awhile')
+        os.system(vrtcommand)
+        warpcommand = 'gdalwarp {} -co BIGTIFF=YES --config GDAL_CACHEMAX 6000 -wm 1500 {}'.format(inmosaic, newfile)
+        os.system(warpcommand)
+        raster = gdal.Open(newfile, GA_ReadOnly)
+        band = raster.GetRasterBand(1)
+        band.ComputeStatistics(False)
+        newfile = None #save changes to file
+        os.remove(inmosaic) #delete vrt
+        combinednedfile = newfile = '{}/{}'.format(nedfilepath, outmosaic)
+
+    def get_pixel(self, x, x0, width):
+        """returns the pixel number for a coordinate value."""
+
+        return int((x - x0) // width)
 
     def extract_NED(self,
-                    nedfiles,
+                    nedfile,
                     catchmentfile,
                     destination,
                     zmin = -100000,
@@ -1238,9 +1280,7 @@ class NHDPlusExtractor(object):
                     ):
         """
         Extracts elevation data as a raster file from the National Elevation
-        Dataset located in the NHDPlus directory. Because NED data are
-        distributed in multiple files, each must be parsed and then combined
-        into the final file.
+        Dataset located in the NHDPlus directory.
         """
 
         if verbose: print('copying the elevation data from NED\n')
@@ -1263,46 +1303,43 @@ class NHDPlusExtractor(object):
         # get data for each file and store the values
 
         values = None
-        for NED in nedfiles:
 
-            if verbose: print('reading data from {}'.format(NED))
 
-            try:
+        if verbose: print('reading data from {}'.format(nedfile))
 
-                # get the values of the DEM raster as an array and origin
 
-                array, corner = self.get_raster_table(NED,
-                                                 [xmin, ymin, xmax, ymax],
-                                                 dtype = 'int32',
-                                                 quiet = quiet)
 
-                if values is None: values = array
+            # get the values of the DEM raster as an array and origin
 
-                else:
+        array, corner = self.get_raster_table(nedfile, [xmin, ymin, xmax, ymax], dtype = 'float')
 
-                    # find the indices of the missing data
+        if values is None: values = array
 
-                    missing = numpy.where(values < zmin)
 
-                    # fill in the values
 
-                    values[missing] = array[missing]
+        # find the indices of the missing data
 
-                # open the file
+        missing = numpy.where(values < zmin)
 
-                source = gdal.Open(NED)
+        # fill in the values
 
-                # set the transform to the new origin
+        values[missing] = array[missing]
 
-                transform = source.GetGeoTransform()
-                transform = (corner[0], transform[1], transform[2],
-                             corner[1], transform[4], transform[1])
+        # open the file
 
-                # get the source band
+        source = gdal.Open(nedfile)
 
-                band = source.GetRasterBand(1)
+        # set the transform to the new origin
 
-            except: pass
+        transform = source.GetGeoTransform()
+        transform = (corner[0], transform[1], transform[2],
+                     corner[1], transform[4], transform[1])
+
+        # get the source band
+
+        band = source.GetRasterBand(1)
+
+
 
         if verbose: print('')
 
@@ -1348,9 +1385,8 @@ class NHDPlusExtractor(object):
         """
 
         #getting proper files for vpu and huc8 selected
-
+        start = time.time()
         DA = self.VPU_to_DA[VPU]
-
 
         destination = '{}/NHDPlus{}'.format(self.destination, DA)
         NHDPlus = '{}/NHDPlus{}'.format(destination, VPU)
@@ -1376,9 +1412,9 @@ class NHDPlusExtractor(object):
         nedfiles = ['{}/NEDSnapshot/Ned{}/elev_cm'.format(NHDPlus,RPU)
                          for RPU in self.VPU_to_RPU[VPU]]
 
-        print(nedfiles)
-
-        start = time.time()
+        newnedfile = '{}/NEDSnapshot/Combined_NED/mosaic_{}.tif'.format(NHDPlus,DA)
+        if not os.path.isfile(newnedfile):
+            self.combine_NED(nedfiles, VPU) #combine all the NED files into one big one
 
         # if the destination folder for the HUC8 does not exist, make it
 
@@ -1449,7 +1485,9 @@ class NHDPlusExtractor(object):
                                        verbose = vverbose)
 
             # get the flow and velocity data
-
+            for key, values in slopevalues.items():
+                for i in range(len(values)):
+                    print(values[i],type(values[i]))
             eromattributes = [['COMID', 'N', 9, 0],  ['Q0001E', 'N', 15, 3], ['V0001E', 'N', 14, 5], ['SMGAGEID', 'C', 16, 0]]
 
             if verbose: print('reading EROM model attributes for ' +
@@ -1464,29 +1502,33 @@ class NHDPlusExtractor(object):
 
             flowlines = {}
             print('making flowline dictionary')
-            i = 0
-            for flowlineVAAs in zip(*(flowvalues[a[0]] for a in flowattributes)):
-                print(flowlineVAAs)
-                flowlines[flowlineVAAs[1]] = Flowline(*flowlineVAAs)
-                i += 1
-                print(i)
-                print(flowlines)
 
+            for flowlineVAAs in zip(*(flowvalues[a[0]] for a in flowattributes)):
+                flowlines[flowlineVAAs[1]] = Flowline(*flowlineVAAs)
 
             for f in flowlines:
 
-                i = slopevalues['COMID'].index(flowlines[f].comid)
+                if flowlines[f].comid in slopevalues['COMID']:
+                    i = slopevalues['COMID'].index(flowlines[f].comid)
 
-                flowlines[f].add_slope(slopevalues['MAXELEVSMO'][i],
+                    flowlines[f].add_slope(slopevalues['MAXELEVSMO'][i],
                                            slopevalues['MINELEVSMO'][i],
                                            slopevalues['SLOPELENKM'][i])
-                i = eromvalues['COMID'].index(flowlines[f].comid)
-                flowlines[f].add_flow(eromvalues['Q0001E'][i],
+
+                if flowlines[f].comid in eromvalues['COMID']:
+                    i = eromvalues['COMID'].index(flowlines[f].comid)
+                    flowlines[f].add_flow(eromvalues['Q0001E'][i],
                                           eromvalues['V0001E'][i],
                                           eromvalues['SMGAGEID'][i])
-                flowlines[f].estimate_traveltime()
+
+                #catch for missing elevslope data points
+                try:
+                    flowlines[f].estimate_traveltime()
+                except AttributeError:
+                    pass
 
                 # save the data in a dictionary for future use
+
 
             with open(p, 'wb') as f: pickle.dump(flowlines, f)
 
@@ -1497,7 +1539,7 @@ class NHDPlusExtractor(object):
             if verbose:
                 print('extracting the NED raster file for {}\n'.format(HUC8))
             cfile = '{}/{}'.format(output, catchmentfile)
-            self.extract_NED(nedfiles, cfile, p, verbose = verbose)
+            self.extract_NED(newnedfile, cfile, p, verbose = verbose)
 
         end = time.time()
         t = end - start
@@ -1570,6 +1612,13 @@ class NHDPlusExtractor(object):
         ymax = boundaries[3] + (boundaries[3] - boundaries[1]) * space
 
         return xmin, ymin, xmax, ymax
+
+    def get_remainder(self, x, x0, width):
+        """
+        returns the remainder for the pixel.
+        """
+
+        return (x - x0) % width
 
     def make_patch(self,
                    points,
