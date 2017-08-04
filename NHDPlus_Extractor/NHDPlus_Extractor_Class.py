@@ -258,6 +258,7 @@ class NHDPlusExtractor(object):
         self.headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'}
 
 
+
     def gather_rpu_links(self,max_version=15, rpu_input=None, filename_input=None):
         '''
         A function to gather the working rpu links for the metadata text file
@@ -790,7 +791,47 @@ class NHDPlusExtractor(object):
 
                 for items in rpu_links:
                     destination.write('%s\n' % items)
+    def DownloadAndDecompress(self):
 
+        for vpu in sorted(self.VPU_to_RPU.keys()):
+
+            for files in self.VPU_Files:
+                print(vpu + ' ' + files)
+                y = self.getvpufile(vpu, files)
+                if y is not None:
+                    y = y.split('/')[-1]
+                else:
+                    continue
+
+                if os.path.exists(os.path.join(self.destination, y)):
+                    print(y + ' already exists moving on')
+                    pass
+
+                else:
+                    self.downloadvpufile(vpu,files)
+
+        for rpu in sorted(self.RPU_to_VPU.keys()):
+
+            for files in self.RPU_Files:
+                print(rpu + ' ' + files)
+                y = self.getrpufile(rpu, files)
+                if y is not None:
+                    y = y.split('/')[-1]
+                    print(y)
+                else:
+                    continue
+
+                if os.path.exists(os.path.join(self.destination, y)):
+                    print(y + ' already exists moving on')
+                    pass
+
+                else:
+                    self.downloadrpufile(rpu, files)
+
+        for dirpath, subdir, files in os.walk(self.destination):
+
+            for data in files:
+                self.decompress(os.path.join(dirpath, data))
     def get_degree_transform(self, dataset):
         """
         Gets a GDAL transform to convert coordinate latitudes and longitudes
