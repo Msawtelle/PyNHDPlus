@@ -19,15 +19,22 @@ class NHDPlusExtractor(object):
      """
 
     def __init__(self, destination):
+        '''
+        init method for NHDPlusExtractor class
+
+        arguments:
+            destination is the path to where the user would like the nhdplus data to be stored
+            if no argument is given the location of this file is used
+        '''
         super(NHDPlusExtractor, self).__init__()
 
-        if destination is None:
+        if destination is None: #if no destination given in init method set destination to current directory
             self. destination = os.path.dirname(__file__)
         #base_url to EPA's hosting of the NHDPlusV21 Dataset
         self.base_url = 'https://s3.amazonaws.com/nhdplus/NHDPlusV21/Data/NHDPlus'
-        self.destination = destination
-        self.currentpath = os.path.dirname(__file__)
-        self.path_to_7zip = r'C:\Program Files\7-Zip\7z.exe'
+        self.destination = destination #set destination
+        self.currentpath = os.path.dirname(__file__) #currentpath variable
+        self.path_to_7zip = r'C:\Program Files\7-Zip\7z.exe' #path to 7zip will vary per User
 
 
         #names of the Drainage areas with respective abbreviations
@@ -251,11 +258,12 @@ class NHDPlusExtractor(object):
         #some vpu regions dont follow the standard url for the other regions this list notes those
         self.problematic_vpu_list = ['03N', '03S', '03W','05', '06', '07', '08',
                                 '10U', '14', '15', '10L', '11','22AS', '22GU', '22MP']
-        self.link_file = os.path.join(self.destination,'link.txt')
+        self.link_file = os.path.join(self.destination,'link.txt') #path to link file
         self.known_exceptions = {(self.base_url+'CO/NHDPlus15/NHDPlusV21_CO_15_VogelExtension'):(self.base_url+'CO/NHDPlus15/NHDPlusV21_CO_15_VogelEXtension')}
 
         #headers to use when pinging the amazon servers
         self.headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'}
+
 
 
     def gather_rpu_links(self,max_version=15, rpu_input=None, filename_input=None):
@@ -273,24 +281,24 @@ class NHDPlusExtractor(object):
         working_urls = []
 
 
-        if rpu_input is None and filename_input is None:
-            for rpu in sorted(self.RPU_to_VPU.keys()):
+        if rpu_input is None and filename_input is None: #if no arguments given loop over all rpus
+            for rpu in sorted(self.RPU_to_VPU.keys()): #iterate over rpus in order
 
-                vpu = self.RPU_to_VPU[rpu]
-                DA = self.VPU_to_DA[vpu]
+                vpu = self.RPU_to_VPU[rpu] #set variable
+                DA = self.VPU_to_DA[vpu] #set variable
 
-                for filename in self.RPU_Files:
+                for filename in self.RPU_Files: #iterate over different rpu filetypes
 
-                    if vpu in self.problematic_vpu_list:
+                    if vpu in self.problematic_vpu_list: #catch exceptions
                         url = '{0}{1}/NHDPlus{2}/NHDPlusV21_{1}_{2}_{3}_{4}'.format(self.base_url, DA, vpu, rpu, filename)
 
                         i = 1
-                        while i < max_version+1:
+                        while i < max_version+1: #find current version of NHDPlus
 
-                            final_url = '{}_{:02d}.7z'.format(url,i)
+                            final_url = '{}_{:02d}.7z'.format(url,i) #final url
 
                             try:
-                                time.sleep(0.1)
+                                time.sleep(0.1) #delay
                                 req = Request(final_url, data=None,headers=self.headers)
                                 response = urlopen(req)
                                 working_urls.append(final_url)
@@ -556,6 +564,7 @@ class NHDPlusExtractor(object):
             working_link = None
             print('no link found for {} {}'.format(vpu, filename))
             return working_link
+
     def getrpufile(self, rpu, filename):
         '''
         A function to return the desired RPU file
@@ -640,9 +649,15 @@ class NHDPlusExtractor(object):
 
 
     def downloadrpufile(self, rpu, filename):
+        '''
+        function to download rpu files
+        arguments:
+            rpu: raster processing unit
+            filename: possible raster files listed in self.RPU_Files
+        '''
 
         assert rpu in self.RPU_to_VPU.keys(), 'RPU must be one of the following ' + str(sorted(self.RPU_to_VPU.keys()))
-
+        assert os.path.isfile(self.link_file), 'no link file run verify_links fucntion'
         assert filename in self.RPU_Files, 'filename must be one of the following ' + str(sorted(self.RPU_Files))
 
         link = self.getrpufile(rpu, filename)
@@ -658,10 +673,17 @@ class NHDPlusExtractor(object):
                 f.write(chunk)
 
     def downloadvpufile(self, vpu, filename):
+        '''
+        function to download rpu files
+        arguments:
+            vpu: vector processing unit
+            filename: possible vector files listed in self.VPU_Files
+        '''
 
         assert vpu in self.VPU_to_RPU.keys(), 'VPU must be in ' + str(sorted(self.VPU_to_RPU.keys()))
-
+        assert os.path.isfile(self.link_file), 'no link_file run verify_links function'
         assert filename in self.VPU_Files, 'filename must be one of ' + str(self.VPU_Files)
+
 
         link = self.getvpufile(vpu, filename)
         filename = link.split('/')[-1]
@@ -674,7 +696,6 @@ class NHDPlusExtractor(object):
                 if not chunk:
                     break
                 f.write(chunk)
-
 
     def decompress(self,filename):
 
@@ -790,7 +811,50 @@ class NHDPlusExtractor(object):
 
                 for items in rpu_links:
                     destination.write('%s\n' % items)
+    def DownloadAndDecompress(self):
+        '''
+        function to download all the data for the NHDPlus DataSet
+        '''
+        self.verify_links()
+        for vpu in sorted(self.VPU_to_RPU.keys()):
 
+            for files in self.VPU_Files:
+                print(vpu + ' ' + files)
+                y = self.getvpufile(vpu, files)
+                if y is not None:
+                    y = y.split('/')[-1]
+                else:
+                    continue
+
+                if os.path.exists(os.path.join(self.destination, y)):
+                    print(y + ' already exists moving on')
+                    pass
+
+                else:
+                    self.downloadvpufile(vpu,files)
+
+        for rpu in sorted(self.RPU_to_VPU.keys()):
+
+            for files in self.RPU_Files:
+                print(rpu + ' ' + files)
+                y = self.getrpufile(rpu, files)
+                if y is not None:
+                    y = y.split('/')[-1]
+                    print(y)
+                else:
+                    continue
+
+                if os.path.exists(os.path.join(self.destination, y)):
+                    print(y + ' already exists moving on')
+                    pass
+
+                else:
+                    self.downloadrpufile(rpu, files)
+
+        for dirpath, subdir, files in os.walk(self.destination):
+
+            for data in files:
+                self.decompress(os.path.join(dirpath, data))
     def get_degree_transform(self, dataset):
         """
         Gets a GDAL transform to convert coordinate latitudes and longitudes
@@ -1035,6 +1099,16 @@ class NHDPlusExtractor(object):
             return values, [origin[0] - rx, origin[1] - ry]
 
     def read_dbf(self, source, comids, attributes = None,verbose=True):
+        '''
+        function to read database files, .dbf,
+        arguments:
+            source: dbf file to be read
+            comids: comids of flowlines to extract from source
+        kwargs:
+            attributes: attributes of flowline to be extracted from source if None
+                        all attributes are returned
+            verbose: verbosity of function
+        '''
         record=[] #empty list to hold singular record
         records=[] #empty list to hold multiple record
         temp = {} #dictionary mapping values to fields example temp['COMID'] = [7621376,24557283]
@@ -1049,7 +1123,7 @@ class NHDPlusExtractor(object):
         ##query. if attributes is none return all the records for all the fields
         if attributes is None: attributes = fields
 
-
+        #find comid index in the dbf file
         for attribute in attributes:
             if attribute == ['COMID', 'N', 9, 0]:
                 comid_index = [pos for pos,j in enumerate(fields) if attribute[0] == j]
@@ -1060,6 +1134,7 @@ class NHDPlusExtractor(object):
 
         if verbose is True:
             print('iterating over records finding matching comids from list given')
+        #iterate over records finding matching comids
         for pos,rec in enumerate(sf.records()):
 
             if rec[comid_index[0]] in comids:
@@ -1069,7 +1144,7 @@ class NHDPlusExtractor(object):
                     print('data for {} has been collected'.format(rec[comid_index[0]]))
                 records.append(record)
                 record = []
-
+        #write records to dictionary linking the attributes to all their respective records
         for field in attributes:
             y = attributes.index(field)
             field = field[0]
