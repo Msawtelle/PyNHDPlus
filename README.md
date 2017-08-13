@@ -1,3 +1,3 @@
 # PyNHDPLUS
 
-This repo holds tools to access and manipulate the NHDPlus Dataset
+Package to download and manipulate the NHDPlus Data set
