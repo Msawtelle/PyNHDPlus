@@ -8,7 +8,7 @@ setup(name='PyNHDPLUS',
       author_email='mitchell.sawtelle@okstate.edu',
       license='GNU',
       packages=['NHDPlus_Extractor'],
-      install_requires=['subprocess','time', 'os', 'numpy', 'struct'.'datetime'
+      install_requires=['subprocess','time', 'os', 'numpy', 'struct','datetime'
                         'shutil', 'osgeo', 'urllib.request', 'urllib.error',
                         'gdalconst','matplotlib','shapefile','pickle',
                         'mpl_toolkits.axes_grid1'
