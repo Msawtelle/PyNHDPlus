@@ -12,5 +12,5 @@ setup(name='PyNHDPLUS',
                         'shutil', 'osgeo', 'urllib.request', 'urllib.error',
                         'gdalconst','matplotlib','shapefile','pickle',
                         'mpl_toolkits.axes_grid1'
-                        ]
+                        ],
       zip_safe=False)
