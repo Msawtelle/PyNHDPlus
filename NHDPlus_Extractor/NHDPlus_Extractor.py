@@ -11,6 +11,8 @@ from flowline import Flowline
 from vectorutils import merge_shapes
 from shapefile import Reader, Writer
 import pickle
+import socket
+
 
 class NHDPlusExtractor(object):
     """class which holds various methods to manipulate, gather, and unpack the NHDPlus Dataset
@@ -36,7 +38,7 @@ class NHDPlusExtractor(object):
         self.currentpath = os.path.dirname(__file__) #currentpath variable
         self.path_to_7zip = r'C:\Program Files\7-Zip\7z.exe' #path to 7zip will vary per User
 
-
+        socket.getaddrinfo('127.0.0.1', 8080)
         #names of the Drainage areas with respective abbreviations
         self.DD = {'AMERICAN SAMOA': 'PI',
               'ARK-RED-WHITE': 'MS',
@@ -245,6 +247,7 @@ class NHDPlusExtractor(object):
         self.RPU_Files = ['CatSeed', 'FdrFac', 'FdrNull', 'FilledAreas',
                           'HydroDem', 'NEDSnapshot','Hydrodem','Catseed']
 
+
         #some of the files on the website do not follow the nomenclature this dictionary makes up for human errors
         self.problematic_rpu_files = {'Catseed':['Catseed','CatSeed'],
                                       'CatSeed':['Catseed','CatSeed'],
@@ -263,10 +266,10 @@ class NHDPlusExtractor(object):
 
         #headers to use when pinging the amazon servers
         self.headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'}
+        self.verify_links()
 
 
-
-    def gather_rpu_links(self,max_version=15, rpu_input=None, filename_input=None):
+    def gather_rpu_links(self,max_version=25, rpu_input=None, filename_input=None):
         '''
         A function to gather the working rpu links for the metadata text file
 
@@ -298,7 +301,7 @@ class NHDPlusExtractor(object):
                             final_url = '{}_{:02d}.7z'.format(url,i) #final url
 
                             try:
-                                time.sleep(0.1) #delay
+                                time.sleep(0.3) #delay
                                 req = Request(final_url, data=None,headers=self.headers)
                                 response = urlopen(req)
                                 working_urls.append(final_url)
@@ -319,7 +322,7 @@ class NHDPlusExtractor(object):
 
 
                             try:
-                                time.sleep(0.1)
+                                time.sleep(0.3)
                                 req = Request(final_url, data=None,headers=self.headers)
                                 response = urlopen(req)
                                 working_urls.append(final_url)
@@ -353,7 +356,7 @@ class NHDPlusExtractor(object):
                     final_url = '{}_{:02d}.7z'.format(url,i)
 
                     try:
-                        time.sleep(0.1)
+                        time.sleep(0.3)
                         req = Request(final_url, data=None,headers=self.headers)
                         response = urlopen(req)
                         working_link = final_url
@@ -375,7 +378,7 @@ class NHDPlusExtractor(object):
 
 
                     try:
-                        time.sleep(0.1)
+                        time.sleep(0.3)
                         req = Request(final_url, data=None,headers=self.headers)
                         response = urlopen(req)
                         working_link = final_url
@@ -391,7 +394,7 @@ class NHDPlusExtractor(object):
 
             return working_link
 
-    def gather_vpu_links(self,max_version=15, vpu_input=None, filename_input=None):
+    def gather_vpu_links(self,max_version=25, vpu_input=None, filename_input=None):
         '''
         A function to gather the working vpu links for the metadata text file
         max_version takes the highest known version of the files in the NHDPLUS Dataset
@@ -421,7 +424,7 @@ class NHDPlusExtractor(object):
                             final_url = '{}_{:02d}.7z'.format(url,i)
 
                             try:
-                                time.sleep(0.1)
+                                time.sleep(0.3)
                                 req = Request(final_url, data=None,headers=self.headers)
                                 response = urlopen(req)
                                 working_urls.append(final_url)
@@ -442,7 +445,7 @@ class NHDPlusExtractor(object):
                             final_url = '{}_{:02d}.7z'.format(url,i)
 
                             try:
-                                time.sleep(0.1)
+                                time.sleep(0.3)
                                 req = Request(final_url, data=None,headers=self.headers)
                                 response = urlopen(req)
                                 working_urls.append(final_url)
@@ -478,7 +481,7 @@ class NHDPlusExtractor(object):
                     final_url = '{}_{:02d}.7z'.format(url,i)
 
                     try:
-                        time.sleep(0.1)
+                        time.sleep(0.3)
                         req = Request(final_url, data=None,headers=self.headers)
                         response = urlopen(req)
                         working_link = final_url
@@ -499,7 +502,7 @@ class NHDPlusExtractor(object):
                     final_url = '{}_{:02d}.7z'.format(url,i)
 
                     try:
-                        time.sleep(0.1)
+                        time.sleep(0.3)
                         req = Request(final_url, data=None,headers=self.headers)
                         response = urlopen(req)
                         working_link = final_url
@@ -674,7 +677,7 @@ class NHDPlusExtractor(object):
 
     def downloadvpufile(self, vpu, filename):
         '''
-        function to download rpu files
+        function to download vpu files
         arguments:
             vpu: vector processing unit
             filename: possible vector files listed in self.VPU_Files
@@ -775,7 +778,7 @@ class NHDPlusExtractor(object):
             for link in links:
 
                 try:
-                        time.sleep(0.1)
+                        time.sleep(0.3)
                         print('trying ' + link)
                         req = Request(link, data=None, headers=self.headers)
                         working_links.append(link)
@@ -811,50 +814,95 @@ class NHDPlusExtractor(object):
 
                 for items in rpu_links:
                     destination.write('%s\n' % items)
-    def DownloadAndDecompress(self):
+    def download_decompress(self,vpu=None,rpu=None,filename=None,decompress=False):
         '''
         function to download all the data for the NHDPlus DataSet
+        **kwargs
+        vpu vector processing unit desired
+        rpu raster processing unit desired
+        filename filename corresponding to rpu or vpu
+        decomrpess if True decompress files with 7zip
+
+        kwarg combinations and function behavior
+        None : All files in the NHDPlus dataset will be downloaded
+        vpu only : downloads all vpu files for specified vpu
+        rpu only : downloads all rpu files for specified rpu
+        vpu + filename : download specified file
+        rpu + filename : downloda specified file
+        vpu + filename + decompress: download specified file and decompress
+        rpu + filename + decompress: download specified file and decompress
+        decompress only : walks self.destination path and decompresses all files in path
+
         '''
-        self.verify_links()
-        for vpu in sorted(self.VPU_to_RPU.keys()):
+        if not os.path.isfile(self.link_file):
+            print('the file {} was not found, running verify_links()'.format(self.link_file))
+            self.verify_links()
 
+        if vpu is not None and filename is not None:
+            assert vpu in self.VPU_to_RPU.keys(), 'VPU must be in ' + str(sorted(self.VPU_to_RPU.keys()))
+            assert filename in self.VPU_Files, 'filename must be one of ' + str(self.VPU_Files)
+            assert rpu is None, 'kwargs rpu and vpu can not be called at the same time, if you wish to download the entire NHDPlus DataSet do not specify either'
+            self.downloadvpufile(vpu,filename)
+
+        elif rpu is not None and filename is not None:
+            assert rpu in self.RPU_to_VPU.keys(), 'RPU must be in ' + str(sorted(self.VPU_to_RPU.keys()))
+            assert filename in self.RPU_Files, 'filename must be one of ' + str(self.VPU_Files)
+            assert vpu is None, 'kwargs rpu and vpu can not be called at the same time if you wish to download the entire NHDPlus DataSet do not specify either'
+            self.downloadrpufile(rpu,filename)
+
+        elif vpu is not None and rpu is None and filename is None:
+            assert vpu in self.VPU_to_RPU.keys(), 'VPU must be in ' + str(sorted(self.VPU_to_RPU.keys()))
             for files in self.VPU_Files:
-                print(vpu + ' ' + files)
-                y = self.getvpufile(vpu, files)
-                if y is not None:
-                    y = y.split('/')[-1]
-                else:
-                    continue
+                self.downloadvpufile(vpu,files)
 
-                if os.path.exists(os.path.join(self.destination, y)):
-                    print(y + ' already exists moving on')
-                    pass
+        elif rpu is not None and vpu is None and filename is None:
+            assert rpu in self.RPU_to_VPU.keys(), 'RPU must be in ' + str(sorted(self.VPU_to_RPU.keys()))
+            for files in self.VPU_Files:
+                self.downloadrpufile(rpu,files)
 
-                else:
-                    self.downloadvpufile(vpu,files)
+        elif rpu is None and vpu is None and filename is None:
+            for vpus in sorted(self.VPU_to_RPU.keys()):
+                for files in self.VPU_Files:
+                    print(vpu + ' ' + files)
+                    y = self.getvpufile(vpus, files)
+                    if y is not None:
+                        y = y.split('/')[-1]
+                    else:
+                        continue
+                    if os.path.exists(os.path.join(self.destination, y)):
+                        print(y + ' already exists moving on')
+                        pass
+                    else:
+                        self.downloadvpufile(vpu,files)
 
-        for rpu in sorted(self.RPU_to_VPU.keys()):
+            for rpu in sorted(self.RPU_to_VPU.keys()):
 
-            for files in self.RPU_Files:
-                print(rpu + ' ' + files)
-                y = self.getrpufile(rpu, files)
-                if y is not None:
-                    y = y.split('/')[-1]
-                    print(y)
-                else:
-                    continue
+                for files in self.RPU_Files:
+                    print(rpu + ' ' + files)
+                    y = self.getrpufile(rpu, files)
+                    if y is not None:
+                        y = y.split('/')[-1]
+                        print(y)
+                    else:
+                        continue
 
-                if os.path.exists(os.path.join(self.destination, y)):
-                    print(y + ' already exists moving on')
-                    pass
+                    if os.path.exists(os.path.join(self.destination, y)):
+                        print(y + ' already exists moving on')
+                        pass
 
-                else:
-                    self.downloadrpufile(rpu, files)
+                    else:
+                        self.downloadrpufile(rpu, files)
+        else:
+            print('the acceptable kwarg combinations are vpu and filename, rpu and filename, vpu only, rpu only, or no kwargs')
+            raise
 
-        for dirpath, subdir, files in os.walk(self.destination):
+        if decompress is True:
 
-            for data in files:
-                self.decompress(os.path.join(dirpath, data))
+            for dirpath, subdir, files in os.walk(self.destination):
+
+                for data in files:
+                    self.decompress(os.path.join(dirpath, data))
+
     def get_degree_transform(self, dataset):
         """
         Gets a GDAL transform to convert coordinate latitudes and longitudes
