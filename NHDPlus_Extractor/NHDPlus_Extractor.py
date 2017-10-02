@@ -1,5 +1,5 @@
 import subprocess, time, os, numpy, struct, datetime, shutil
-from osgeo import gdal
+import gdal
 from osgeo import osr
 from urllib.request import urlopen, Request
 from urllib.error import HTTPError, URLError
@@ -7,8 +7,8 @@ from gdalconst import GA_ReadOnly
 from matplotlib import pyplot, path, ticker
 from matplotlib import patches, colors
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from flowline import Flowline
-from vectorutils import merge_shapes
+from .flowline import Flowline
+from .vectorutils import merge_shapes
 from shapefile import Reader, Writer
 import pickle
 import socket
@@ -20,7 +20,7 @@ class NHDPlusExtractor(object):
        destination argument of the init method denotes the working directory for all ndhplus work
      """
 
-    def __init__(self, destination):
+    def __init__(self, destination=None):
         '''
         init method for NHDPlusExtractor class
 
@@ -29,12 +29,11 @@ class NHDPlusExtractor(object):
             if no argument is given the location of this file is used
         '''
         super(NHDPlusExtractor, self).__init__()
-
-        if destination is None: #if no destination given in init method set destination to current directory
-            self. destination = os.path.dirname(__file__)
+        self.destination = destination
+        if self.destination is None: #if no destination given in init method set destination to current directory
+            self.destination = os.path.dirname(__file__)
         #base_url to EPA's hosting of the NHDPlusV21 Dataset
         self.base_url = 'https://s3.amazonaws.com/nhdplus/NHDPlusV21/Data/NHDPlus'
-        self.destination = destination #set destination
         self.currentpath = os.path.dirname(__file__) #currentpath variable
         self.path_to_7zip = r'C:\Program Files\7-Zip\7z.exe' #path to 7zip will vary per User
 
@@ -266,7 +265,7 @@ class NHDPlusExtractor(object):
 
         #headers to use when pinging the amazon servers
         self.headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.81 Safari/537.36'}
-        self.verify_links()
+
 
 
     def gather_rpu_links(self,max_version=25, rpu_input=None, filename_input=None):
@@ -662,18 +661,25 @@ class NHDPlusExtractor(object):
         assert rpu in self.RPU_to_VPU.keys(), 'RPU must be one of the following ' + str(sorted(self.RPU_to_VPU.keys()))
         assert os.path.isfile(self.link_file), 'no link file run verify_links fucntion'
         assert filename in self.RPU_Files, 'filename must be one of the following ' + str(sorted(self.RPU_Files))
-
-        link = self.getrpufile(rpu, filename)
+        link = self.getvpufile(vpu, filename)
         filename = link.split('/')[-1]
-        req = Request(link, data = None, headers = self.headers)
-        response = urlopen(req)
-        CHUNK = 1024 * 1024
-        with open(os.path.join(self.destination, filename), 'wb') as f:
-            while True:
-                chunk = response.read(CHUNK)
-                if not chunk:
-                    break
-                f.write(chunk)
+        filepath = os.path.join(self.destination, filename)
+
+        if not os.path.isfile(filepath):
+            req = Request(link, data = None, headers = self.headers)
+            response = urlopen(req)
+            CHUNK = 1024 * 1024
+            with open(filepath, 'wb') as f:
+                while True:
+                    chunk = response.read(CHUNK)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+            print('finished downloading file for rpu:{}, filename:{}'.format(rpu,filename))
+
+        else:
+            print('{} already exists, moving on'.format(filepath))
+
 
     def downloadvpufile(self, vpu, filename):
         '''
@@ -687,18 +693,23 @@ class NHDPlusExtractor(object):
         assert os.path.isfile(self.link_file), 'no link_file run verify_links function'
         assert filename in self.VPU_Files, 'filename must be one of ' + str(self.VPU_Files)
 
-
         link = self.getvpufile(vpu, filename)
         filename = link.split('/')[-1]
-        req = Request(link, data = None, headers = self.headers)
-        response = urlopen(req)
-        CHUNK = 1024 * 1024
-        with open(os.path.join(self.destination, filename), 'wb') as f:
-            while True:
-                chunk = response.read(CHUNK)
-                if not chunk:
-                    break
-                f.write(chunk)
+        filepath = os.path.join(self.destination, filename)
+
+        if not os.path.isfile(filepath):
+            req = Request(link, data = None, headers = self.headers)
+            response = urlopen(req)
+            CHUNK = 1024 * 1024
+            with open(filepath, 'wb') as f:
+                while True:
+                    chunk = response.read(CHUNK)
+                    if not chunk:
+                        break
+                    f.write(chunk)
+            print('finished downloading file for vpu:{}, filename:{}'.format(vpu,filename))
+        else:
+            print('{} already exists, moving on'.format(filepath))
 
     def decompress(self,filename):
 
@@ -742,6 +753,7 @@ class NHDPlusExtractor(object):
 
             print('error: unable to decompress files')
             print('is 7zip installed?')
+        print('{} decompressed'.format(filename))
 
     def decompress_linux(self, filename):
         """
@@ -759,6 +771,8 @@ class NHDPlusExtractor(object):
 
             print('error: unable to decompress files')
             print('is 7zip installed?')
+
+        print('{} decompressed'.format(filename))
 
     def verify_links(self):
 
@@ -814,12 +828,12 @@ class NHDPlusExtractor(object):
 
                 for items in rpu_links:
                     destination.write('%s\n' % items)
-    def download_decompress(self,vpu=None,rpu=None,filename=None,decompress=False):
+    def download_decompress(self,vpu=None,rpu=None,filename=None,decompress=True):
         '''
         function to download all the data for the NHDPlus DataSet
         **kwargs
-        vpu vector processing unit desired
-        rpu raster processing unit desired
+        vpu vector processing unit desired, inputted as string
+        rpu raster processing unit desired, inputted as string
         filename filename corresponding to rpu or vpu
         decomrpess if True decompress files with 7zip
 
@@ -870,7 +884,7 @@ class NHDPlusExtractor(object):
                     else:
                         continue
                     if os.path.exists(os.path.join(self.destination, y)):
-                        print(y + ' already exists moving on')
+                        print(y + ' already exists, moving on')
                         pass
                     else:
                         self.downloadvpufile(vpu,files)
@@ -887,7 +901,7 @@ class NHDPlusExtractor(object):
                         continue
 
                     if os.path.exists(os.path.join(self.destination, y)):
-                        print(y + ' already exists moving on')
+                        print(y + ' already exists, moving on')
                         pass
 
                     else:
@@ -1247,6 +1261,7 @@ class NHDPlusExtractor(object):
         fields = shapefile.fields[1:]
         fields = [item[0].upper() for item in fields]
 
+
         for pos, j in enumerate(fields):
             if j == 'REACHCODE':
                 reach_index = pos
@@ -1260,9 +1275,10 @@ class NHDPlusExtractor(object):
 
         i = 0
         for record in records:
-            if record[reach_index][:8] == HUC8: indices.append(i)
+            huc8record = int(record[reach_index][:8])
+            if huc8record == HUC8:
+                indices.append(i)
             i+=1
-
         if len(indices) == 0:
             if verbose: print('error: query returned no values')
             raise
@@ -1275,8 +1291,8 @@ class NHDPlusExtractor(object):
 
         for i in indices:
             shape = shapefile.shape(i)
-            w.poly(shapeType = 3, parts = [shape.points])
 
+            w.poly(shapeType = 3, parts = [shape.points])
             record = records[i]
 
             #little work around for blank GNIS_ID and GNIS_NAME values
@@ -1285,7 +1301,6 @@ class NHDPlusExtractor(object):
                 record[3] = record[3].decode('cp1252')
             if isinstance(record[4], bytes):
                 record[4] = record[4].decode('cp1252')
-
             w.record(*record)
 
         w.save(destination)

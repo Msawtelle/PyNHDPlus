@@ -1,3 +1,3 @@
-# PyNHDPLUS
+# PyNHDPlus
 
-Package to download and manipulate the NHDPlus data set
+Package to download and manipulate the NHDPlus V2 data set
